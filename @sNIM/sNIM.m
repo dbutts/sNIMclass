@@ -356,7 +356,21 @@ classdef sNIM < NIM
 						
 						snim.subunits = cat( 1, snim.subunits, added_subunits );
 				end
-						
+
+				function snim = subunit_flip( snim, targets )
+%			  Usage: cnim = subunit_flip( cnim, <targets> )
+	
+				Nsubs = length(snim.subunits);
+				if nargin < 2
+					targets = 1:Nsubs;
+				end
+				for tar = targets
+					snim.subunits(tar).kt = -snim.subunits(tar).kt;
+					snim.subunits(tar).ksp = -snim.subunits(tar).ksp;
+				end
+			end
+			
+
 				
 				function [Uindx,XVindx] = generate_XVfolds( snim, NTstim, Nfold, XVfolds )
 %					Usage: [Uindx,XVindx] = generate_XVfolds( snim, NTstim, <Nfold>, <XVfolds> )
