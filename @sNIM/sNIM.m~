@@ -1,14 +1,12 @@
-
-classdef sNIM < NIM
+classdef sNIM < NIM    
+	% Class implementation of separable NIM based on NIM class. 
+	% The main difference is the use of LRsubunit class (instead of subunit)
+	% where the 'LR' stands for "low-rank", and fit-filter methods around this
+	%   
+	% Created by Dan Butts, September 2015
     
-    % Class implementation of separable NIM based on NIM class. 
-    % The main difference is the use of LRsubunit class (instead of subunit)
-		% where the 'LR' stands for "low-rank", and fit-filter methods around this
-    %   
-    % Created by Dan Butts, September 2015
-    
-    %% No additional properties
-    properties
+	%% No additional properties
+	properties
 %        spkNL;          %struct defining the spiking NL function
 %        subunits;       %array of subunit objects <- this will change to array of 'LRsubunits' but same name
 %        stim_params;    %struct array of parameters characterizing the stimuli that the model acts on, must have a .dims field
@@ -16,9 +14,9 @@ classdef sNIM < NIM
 %        spk_hist;       %class defining the spike-history filter properties
 %        fit_props;      %struct containing information about model fit evaluations
 %        fit_hist;       %struct containing info about history of fitting
-    end
+	end
     
-    properties (Hidden)
+	properties (Hidden)
         %init_props;         %struct containing details about model initialization
         %allowed_reg_types = {'nld2','d2xt','d2x','d2t','l2','l1'}; %set of allowed regularization types
 				%allowed_spkNLs = {'lin','rectpow','exp','softplus','logistic'}; %set of NL functions currently implemented
@@ -26,74 +24,76 @@ classdef sNIM < NIM
         %create_on = date;    %date model was generated
         %min_pred_rate = 1e-50; %minimum predicted rate (for non-negative data) to avoid NAN LL values
         %opt_check_FO = 1e-2; %threshold on first-order optimality for fit-checking
-    end
+	end
     
-    %% METHODS DEFINED IN SEPARATE FILES
-    methods 
+	%% METHODS DEFINED IN SEPARATE FILES
+	methods 
+		[] = display_model( snim, Robs, Xstims, varargin ); %display current model
        %snim = fit_Tfilters(snim, Robs, Xstims, varargin); %filter model time-filters 
        %snim = fit_Sfilters(snim, Robs, Xstims, varargin); %filter model space-filters
 			 % All these will be overloaded
-			 snim = fit_filters(snim, Robs, Xstims, varargin); %filter model time-filters 
+			 %snim = fit_filters(snim, Robs, Xstims, varargin); %filter model time-filters 
        %nim = fit_upstreamNLs(nim, Robs, Xstims, varargin); %fit model upstream NLs
        %nim = fit_spkNL(nim, Robs, Xstims, varargin); %fit parameters of spkNL function
        %nim = fit_NLparams(nim, Robs, Xstims, varargin); %fit parameters of (parametric) upstream NL functions
        %nim = fit_weights(nim, Robs, Xstims, varargin); %fit linear weights on each subunit
-       [] = display_model(snim,Robs,Xstims,varargin); %display current model
-       %[] = display_model_dab(nim,Robs,Xstims,varargin); %display current model
-    end
-    methods (Static, Hidden)
+	end
+	methods (Static, Hidden)
         %Tmat = create_Tikhonov_matrix(stim_params, reg_type); %make regularization matrices
         %Xmat = create_time_embedding(stim,params) %make time-embedded stimulus
-    end
-    %%
-    methods
-        %% CONSTRUCTOR
-				function snim = sNIM( nim, ranks, stim_params )
-%         snim = sNIM( nim, rank(s) ) or snim = sNIM( STA, rank(s), stim_params )
-%         the second (sta) usage defaults to creating an LN model with STA as first filter
-%         constructor for class sNIM -- must be based on NIM or STA 
-%            INPUTS:
-%                nim
-%           OUTPUTS:
-%                snim: initialized model object
-                   
-            if nargin == 0
-                return %handle the no-input-argument case by returning a null model. This is important when initializing arrays of objects
-						end
-						if (nargin < 2) || isempty(ranks)
-							ranks = 1;  % assume separable model if ranks not entered)
-						end
-						if length(nim) > 1
-							% then assume passed in STA and produce NIM for it with second argument
-							sta = nim;
-							assert( nargin < 3, 'Need to enter stim_params as third constructor argument.' );
-							% trim STA to size specified in stim-params (assume number of lags could be off)
-							if size(sta,1) > stim_params.dims(1)
-								ks{1} = sta(1:stim_params.dims(1),:);
-							else
-								ks{1} = zeros( stim_params.dims(1), prod(stim_params.dims(2:3)) );
-								ks{1}(1:size(sta,1),:) = sta;
-							end
-							nim = NIM( stim_params, {'lin'}, 1, 'init_filts', ks );
-						end
-				
-						% Intepret ranks
-						Nsubs = length(nim.subunits);
-						if length(ranks) < Nsubs
-							ranks(end+1:Nsubs) = ones(Nsubs-length(ranks),1)*ranks(1);
-						end
-						
-						% Now convert to SNIM 
-						snim.spkNL = nim.spkNL;
-						for nn = 1:Nsubs
-							snim.subunits = cat(1,snim.subunits,LRSUBUNIT( nim.subunits(nn), nim.stim_params.dims(1), ranks(nn) ) );
-						end
-						snim.stim_params = nim.stim_params;
-						snim.noise_dist = nim.noise_dist;
-						snim.spk_hist = nim.spk_hist;
-						snim.fit_props = nim.fit_props;
-						snim.fit_history = nim.fit_history;
+	end
+		
+		
+	%%
+	methods	
+
+			function snim = sNIM( nim, ranks, stim_params )
+%       CONSTRUCTOR: snim = sNIM( nim, rank(s) ) or snim = sNIM( STA, rank(s), stim_params )
+				%       the second (sta) usage defaults to creating an LN model with STA as first filter
+				%       constructor for class sNIM -- must be based on NIM or STA 
+				%          INPUTS:
+				%              nim
+				%         OUTPUTS:
+				%              snim: initialized model object
+            
+				if nargin == 0        
+					return %handle the no-input-argument case by returning a null model. This is important when initializing arrays of objects
 				end
+				if (nargin < 2) || isempty(ranks)
+					ranks = 1;  % assume separable model if ranks not entered)
+				end
+				
+				if length(nim) > 1		
+					% then assume passed in STA and produce NIM for it with second argument		
+					sta = nim;
+					assert( nargin < 3, 'Need to enter stim_params as third constructor argument.' );
+					% trim STA to size specified in stim-params (assume number of lags could be off)
+					if size(sta,1) > stim_params.dims(1)
+						ks{1} = sta(1:stim_params.dims(1),:);
+					else		
+						ks{1} = zeros( stim_params.dims(1), prod(stim_params.dims(2:3)) );
+						ks{1}(1:size(sta,1),:) = sta;
+					end
+					nim = NIM( stim_params, {'lin'}, 1, 'init_filts', ks );					
+				end
+
+				% Intepret ranks
+				Nsubs = length(nim.subunits);
+				if length(ranks) < Nsubs
+					ranks(end+1:Nsubs) = ones(Nsubs-length(ranks),1)*ranks(1);
+				end
+				
+				% Now convert to SNIM
+				snim.spkNL = nim.spkNL;
+				for nn = 1:Nsubs
+					snim.subunits = cat(1,snim.subunits,LRSUBUNIT( nim.subunits(nn), nim.stim_params.dims(1), ranks(nn) ) );
+				end
+				snim.stim_params = nim.stim_params;
+				snim.noise_dist = nim.noise_dist;
+				snim.spk_hist = nim.spk_hist;
+				snim.fit_props = nim.fit_props;
+				snim.fit_history = nim.fit_history;
+			end
         
 				%function nim = set_reg_params(nim, varargin)
 				%function nim = set_stim_params(nim, varargin)
@@ -164,9 +164,7 @@ classdef sNIM < NIM
 %					snim = fit_Tfilters( snim, Robs, Xstims, varargin )
 %
 %
-					%if (nargin < 4) || isempty(train_inds)
-					%	train_inds = NaN;
-					%end
+
 					% Fit thresholds by default
 					varargin{end+1} = 'fit_offsets';
 					varargin{end+1} = 1;
@@ -175,11 +173,12 @@ classdef sNIM < NIM
 					nim = nim.fit_filters( Robs, Xs, varargin );
 					
 					% Scoop fit filters back into old struct
-					nLags = snim.stim_params.dims(1);
+					nLags = nim.stim_params(1).dims(1);
 					Nmods = length(snim.subunits);
 					for nn = 1:Nmods
-						snim.subunits(nn).kt = reshape( nim.subunits(nn).filtK, nLags, snim.subunits(nn).rank );
+						snim.subunits(nn).kt = reshape( nim.subunits(nn).filtK, nLags/snim.subunits(nn).rank, snim.subunits(nn).rank );
 						snim.subunits(nn) = snim.subunits(nn).normalize_kt();
+						snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
 					end
 					
 					snim.fit_props = nim.fit_props;
@@ -229,7 +228,31 @@ classdef sNIM < NIM
 
 				end
 				
-								
+				%%
+				function snim = reg_pathT( snim, Robs, Xs, Uindx, XVindx, varargin )
+%					Usage: snim = reg_pathT( snim, Robs, Xs, Uindx, XVindx, varargin )
+
+					varargin{end+1} = 'fit_offsets';
+					varargin{end+1} = 1;
+				
+					[nim,Xs] = snim.convert2NIM_time( stims );
+					nim = nim.reg( Robs, Xs, varargin );
+					
+					% Scoop fit filters back into old struct
+					nLags = nim.stim_params(1).dims(1);
+					Nmods = length(snim.subunits);
+					for nn = 1:Nmods
+						snim.subunits(nn).kt = reshape( nim.subunits(nn).filtK, nLags/snim.subunits(nn).rank, snim.subunits(nn).rank );
+						snim.subunits(nn) = snim.subunits(nn).normalize_kt();
+						snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
+					end
+					
+					snim.fit_props = nim.fit_props;
+					snim.fit_props.fit_type = 'T-filter';
+					snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
+
+				end
+				
 				%%
         function snim = add_subunits(snim,NLtypes,mod_signs,varargin)
 %         Usage: snim = snim.add_subunits( NLtypes, mod_signs, varargin)
@@ -244,96 +267,69 @@ classdef sNIM < NIM
 %                    ('xtargs',xtargs): specify vector of of Xtargets for each added subunit
 %                    ('rank',rank): rank of added subunit
 %                    ('init_kt',init_kt): cell array of initial temporal filter values for each subunit
+%                    ('init_ksp',init_ksp): cell array of initial space filter values for each subunit
 %                    ('lambda_type',lambda_val): first input is a string specifying the type of
 %                        regularization (e.g. 'd2t' for temporal smoothness). This must be followed by a
 %                        scalar/vector giving the associated lambda value(s).
 %                    ('NLparams',NLparams): cell array of upstream NL parameter vectors
 %            OUPUTS: nim: new nim object
-            
+
+						% Extract SNIM-relevant variables from vargin and pass the rest on
+						kts = []; ksps = []; ranks = [];
+						counter = 1;	j = 1; 
+						modvarargin = {};
+						while j <= length(varargin)
+							switch lower(varargin{j})
+								case 'init_kt'
+									kts = varargin{j+1};
+								case 'init_ksp'
+									ksps = varargin{j+1};
+								case 'rank'
+									ranks = varargin{j+1};
+								otherwise
+									modvarargin{counter} = varargin{j}; 
+									modvarargin{counter+1} = varargin{j+1}; 
+									counter = counter + 2;
+							end
+							j = j + 2;
+						end
+
 						% Make equivalent NIM and make subunits
+						Nmods = length(snim.subunits);
+						oldranks = ones(Nmods,1);
+						for nn = 1:Nmods
+							init_filts{nn} = snim.subunits(nn).filtK;
+							oldranks(nn) = snim.subunits(nn).rank;
+						end
+						nim = convert2NIM( snim, snim.stim_params, init_filts, ones(Nmods,1) );
+						nim = nim.add_subunits( NLtypes, mod_signs, modvarargin );
 						
-            if ~iscell(NLtypes) && ischar(NLtypes);
-                NLtypes = cellstr(NLtypes); %make NL types a cell array
-            end
-            nSubs = length(mod_signs); %number of subunits being added
-            nStims = length(snim.stim_params);
-            Xtargets = ones(nSubs,1); %default Xtargets to 1
-            if length(NLtypes) == 1 && nSubs > 1
-                NLtypes = repmat(NLtypes,nSubs,1); %if NLtypes is specified as a single string, assume we want this NL for all subunits
-            end
-            init_filts = cell(nSubs,1);
-            NLparams = cell(nSubs,1);
-            rnk = 1;
+						Nsubsadded = length(nim.subunits)-length(snim.subunits);
+						if isempty(ranks)
+							ranks = [oldranks; ones(Nsubsadded,1)*oldranks(1);];
+						else
+							ranks = [oldranks; ranks;];
+						end
+						snim2 = sNIM( nim, ranks );
+						added_subunits = snim2.subunits(length(snim.subunits)+(1:Nsubsadded));
+						if ~isempty(kts)
+							for nn = 1:length(kts)
+								added_subunits(nn).kt = kts{nn};
+							end
+						end
+						if isempty(ksps)
+							for nn = 1:Nsubsadded
+								added_subunits(nn).ksp = cnim.subunits(1).ksp;
+							end
+						else
+							for nn = 1:length(ksps)
+								added_subunits(nn).ksp = ksps{nn};
+							end
+						end
 						
-            %parse input flags
-            j = 1; reg_types = {}; reg_vals = [];
-            while j <= length(varargin)
-                switch lower(varargin{j})
-                    case 'xtargs'
-                        Xtargets = varargin{j+1};
-                        assert(all(ismember(Xtargets,1:nStims)),'invalid Xtargets specified');
-                    case 'rank'
-                        rnk = varargin{j+1};
-                    case 'init_kt'
-                        if ~iscell(varargin{j+1}) %if init_filts are specified as a matrix, make them a cell array
-                            init_filts = cell(length(mod_signs),1);
-                            for ii = 1:length(mod_signs)
-                                init_filts{ii} = varargin{j+1}(:,ii);
-                            end
-                        else
-                            init_filts = varargin{j+1};
-                        end
-                    case 'nlparams'
-                        NLparams = varargin{j+1};
-                        assert(iscell(NLparams),'NLparams must be input as cell array');
-                    case nim.allowed_reg_types
-                        reg_types = cat(1,reg_types,lower(varargin{j}));
-                        cur_vals = varargin{j+1};
-                        reg_vals = cat(2,reg_vals, cur_vals(:));
-                    otherwise
-                        error('Invalid input flag');
-                end
-                j = j + 2;
-            end
-            if size(reg_vals,1) == 1 %if reg_vals are specified as scalars, assume we want the same for all subuntis
-                reg_vals = repmat(reg_vals,nSubs,1);
-            end
-            
-            assert(length(Xtargets) == nSubs,'length of mod_signs and Xtargets must be equal');
-            %initialize subunits
-            for ii = 1:nSubs %loop initializing subunits (start from last to initialize object array)
-                stimD = prod(snim.stim_params(Xtargets(ii)).dims); %dimensionality of the current filter
-                if isempty(init_filts{ii})
-                    init_filt = randn(stimD,1)/stimD; %initialize fitler coefs with gaussian noise
-                else
-                    init_filt = init_filts{ii};
-                end
-                
-               %use the regularization parameters from the most similar subunit if we have one,
-               %otherwise use default init
-               same_Xtarg = find([snim.subunits(:).Xtarg] == Xtargets(ii),1); %find any existing subunits with this same Xtarget
-               same_Xtarg_and_NL = same_Xtarg(strcmp(snim.get_NLtypes(same_Xtarg),NLtypes{ii})); %set that also have same NL type
-               if ~isempty(same_Xtarg_and_NL) 
-                    default_lambdas = snim.subunits(same_Xtarg_and_NL(1)).reg_lambdas;
-               elseif ~isempty(same_Xtarg)
-                    default_lambdas = snim.subunits(same_Xtarg(1)).reg_lambdas;
-               else
-                   default_lambdas = [];
-							 end
-               
-							 % make NIM subunit
-							 new_sub = SUBUNIT(init_filt, mod_signs(ii), NLtypes{ii},Xtargets(ii),NLparams{ii});
-               snim.subunits = cat(1,snim.subunits,LRSUBUNIT( new_sub, snim.stim_params(Xtargets(ii)).dims(1), rnk )); %add new subunit
-							 % default new subunit rank to 1
-							 if ~isempty(default_lambdas)
-                   snim.subunits(end).reg_lambdas = default_lambdas;
-               end
-               for jj = 1:length(reg_types) %add in user-specified regularization parameters
-                   assert(reg_vals(ii,jj) >= 0,'regularization hyperparameters must be non-negative');
-                   snim.subunits(end).reg_lambdas.(reg_types{jj}) = reg_vals(ii,jj);
-               end               
-            end
+						snim.subunits = cat( 1, snim.subunits, added_subunits );
 				end
+						
 				
 				function [Uindx,XVindx] = generate_XVfolds( snim, NTstim, Nfold, XVfolds )
 %					Usage: [Uindx,XVindx] = generate_XVfolds( snim, NTstim, <Nfold>, <XVfolds> )
@@ -529,29 +525,29 @@ classdef sNIM < NIM
 					end
 				end
 
-        function [] = check_inputs( snim, Robs, stims, sub_inds, gain_funs )
-            % checks the format of common inputs params
-            if nargin < 4
-                gain_funs = [];
-            end
-            if nargin < 5
-                sub_inds = nan;
-            end
-            Nsubs = length(snim.subunits);
-            for n = 1:Nsubs %check that stimulus dimensions match
-                [NT,filtLen] = size(stims{nim.subunits(n).Xtarg}); %stimulus dimensions
-                assert(filtLen == prod(nim.stim_params(snim.subunits(n).Xtarg).dims),'Xstim dims dont match stim_params');
-            end
-            assert(length(unique(cellfun(@(x) size(x,1),Xstims))) == 1,'Xstim elements need to have same size along first dimension');
-            assert(size(Robs,2) == 1,'Robs must be a vector');
-            assert(iscell(Xstims),'Xstims must for input as a cell array');
-            if ~isempty(gain_funs)
-                assert(size(gain_funs,1) == NT & size(gain_funs,2) == Nsubs,'format of gain_funs is incorrect');
-            end
-            if ~isnan(sub_inds)
-                assert(min(sub_inds) > 0 & max(sub_inds) <= NT,'invalid data indices specified');
-            end
-        end
+%         function [] = check_inputs( snim, Robs, stims, sub_inds, gain_funs )
+%             % checks the format of common inputs params
+%             if nargin < 4
+%                 gain_funs = [];
+%             end
+%             if nargin < 5
+%                 sub_inds = nan;
+%             end
+%             Nsubs = length(snim.subunits);
+%             for n = 1:Nsubs %check that stimulus dimensions match
+%                 [NT,filtLen] = size(stims{nim.subunits(n).Xtarg}); %stimulus dimensions
+%                 assert(filtLen == prod(nim.stim_params(snim.subunits(n).Xtarg).dims),'Xstim dims dont match stim_params');
+%             end
+%             assert(length(unique(cellfun(@(x) size(x,1),Xstims))) == 1,'Xstim elements need to have same size along first dimension');
+%             assert(size(Robs,2) == 1,'Robs must be a vector');
+%             assert(iscell(Xstims),'Xstims must for input as a cell array');
+%             if ~isempty(gain_funs)
+%                 assert(size(gain_funs,1) == NT & size(gain_funs,2) == Nsubs,'format of gain_funs is incorrect');
+%             end
+%             if ~isnan(sub_inds)
+%                 assert(min(sub_inds) > 0 & max(sub_inds) <= NT,'invalid data indices specified');
+%             end
+%         end
         
         % function nim = set_subunit_scales(nim,fgint)
         
