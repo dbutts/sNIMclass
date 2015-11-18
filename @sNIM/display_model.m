@@ -1,10 +1,10 @@
-function [] = display_model( snim, Robs, Xstims, varargin )
+function [] = display_model( snim, stims, Robs, varargin )
 %         [] = snim.display_model( <Robs>, <Xstims>, varargin )
 %         Creates a display of the elements of a given NIM
 %              INPUTS:
 %                   <Robs>: observed spiking data. Needed if you want to utilize a spike-history
 %                       filter. Otherwise set as empty
-%                   <Xstims>: Stimulus cell array. Needed if you want to display the distributions of generating signals
+%                   <stims>: Stimulus cell array. Needed if you want to display the distributions of generating signals
 %                   optional_flags:
 %                         ('xtargs',xtargs): indices of stimuli for which we want to plot the filters
 %                         ('sub_inds',sub_inds): set of subunits to plot
@@ -12,8 +12,8 @@ function [] = display_model( snim, Robs, Xstims, varargin )
 %                         'no_spk_hist': include this flag to suppress plotting of spike history filter
 %                         ('gain_funs',gain_funs): if you want the computed generating signals to account for specified gain_funs
 
-if nargin < 2; Robs = []; end;
-if nargin < 3; Xstims = []; end;
+if nargin < 2; stims = []; end;
+if nargin < 3; Robs = []; end;
 
 Nsubs = length(snim.subunits);
 
@@ -51,8 +51,8 @@ if spkhstlen > 0 && (plot_spk_hist || plot_spkNL)
     Xspkhst = create_spkhist_Xmat(Robs,snim.spk_hist.bin_edges);
 end
 n_hist_bins = 500; %internal parameter determining histogram resolution
-if ~isempty(Xstims)
-    [G, ~, gint] = snim.process_stimulus(Xstims,1:Nsubs,gain_funs);
+if ~isempty(stims)
+    [G, ~, gint] = snim.process_stimulus(stims,1:Nsubs,gain_funs);
     G = G + snim.spkNL.theta; %add in constant term
     if spkhstlen > 0 %add in spike history filter output
         G = G + Xspkhst*snim.spk_hist.coefs(:);

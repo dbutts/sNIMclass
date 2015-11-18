@@ -66,14 +66,15 @@ classdef sNIM < NIM
 				if length(nim) > 1		
 					% then assume passed in STA and produce NIM for it with second argument		
 					sta = nim;
-					assert( nargin < 3, 'Need to enter stim_params as third constructor argument.' );
+					assert( nargin > 2, 'Need to enter stim_params as third constructor argument.' );
 					% trim STA to size specified in stim-params (assume number of lags could be off)
 					if size(sta,1) > stim_params.dims(1)
-						ks{1} = sta(1:stim_params.dims(1),:);
+						ktmp = sta(1:stim_params.dims(1),:);
 					else		
-						ks{1} = zeros( stim_params.dims(1), prod(stim_params.dims(2:3)) );
-						ks{1}(1:size(sta,1),:) = sta;
+						ktmp = zeros( stim_params.dims(1), prod(stim_params.dims(2:3)) );
+						ktmp(1:size(sta,1),:) = sta;
 					end
+					ks{1} = ktmp(:);
 					nim = NIM( stim_params, {'lin'}, 1, 'init_filts', ks );					
 				end
 
@@ -346,7 +347,7 @@ classdef sNIM < NIM
 						end
 						if isempty(ksps)
 							for nn = 1:Nsubsadded
-								added_subunits(nn).ksp = cnim.subunits(1).ksp;
+								added_subunits(nn).ksp = snim.subunits(1).ksp;
 							end
 						else
 							for nn = 1:length(ksps)
