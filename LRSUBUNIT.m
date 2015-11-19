@@ -72,17 +72,11 @@ classdef LRSUBUNIT < SUBUNIT
 						% Create low-rank decomposition
 						if rnk > 0
 							[u,s,v] = svd( reshape(subunit.filtK, [nLags NSP]) );
-							disp(sprintf( ' %7.4f', diag(s(1:rnk,1:rnk)) ))
+							%disp(sprintf( ' %7.4f', diag(s(1:rnk,1:rnk)) ))
 							LRsubunit.kt = u(:,1:rnk);
 							LRsubunit.ksp =  v(:,1:rnk) * s(1:rnk,1:rnk);
 							% normalize each temporal function
 							LRsubunit = LRsubunit.normalize_kt();
-							%nrms = 10*std(LRsubunit.kt);
-							%for ii = 1:rnk
-							%	LRsubunit.kt(:,ii) = LRsubunit.kt(:,ii)/nrms(ii);
-							%	LRsubunit.ksp(:,ii) = s(ii,ii)*LRsubunit.ksp(:,ii)*nrms(ii);
-							%end
-							%LRsubunit.filtK = LRsubunit.kt * LRsubunit.ksp';
 						end
 				end
         
@@ -99,6 +93,21 @@ classdef LRSUBUNIT < SUBUNIT
 					LRsub.filtK = LRsub.kt * LRsub.ksp';
 					LRsub.filtK = LRsub.filtK(:);
 				end
+				
+				function kts = upsample_kts( LRsub, tbspace )
+%				  Usage: kts = LRsub.upsample_kts( tbspacing )
+%							Generates temporal filters at full temporal resolution through upsampling 
+					  
+						[nLags,rnk] = size(LRsub.kt);
+						% Create a tent-basis (triangle) filter
+						tent_filter = [(1:tbspace)/tbspace 1-(1:tbspace-1)/tbspace]/tbspace;
+						kts = zeros( tbspace*(nLags+1), rnk );
+						for nn = 1:length(tent_filter)
+							kts((0:nLags-1)*tbspace+nn,:) = kts((0:nLags-1)*tbspace+nn,:) + tent_filter(nn) * LRsub.kt;
+						end
+						kts = kts(2:end-1,:);  % shift off first latency (one lag in the future)
+				end
+						
 		end
 end
 

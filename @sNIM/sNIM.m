@@ -163,8 +163,7 @@ classdef sNIM < NIM
 				%%
 				function snim = fit_Tfilters( snim, Robs, stims, varargin )
 %					snim = fit_Tfilters( snim, Robs, Xstims, varargin )
-%
-%
+%					Fits temporal filters, and implicitly upstream nonlinearity thresholds
 
 					% Fit thresholds by default
 					varargin{end+1} = 'fit_offsets';
@@ -181,18 +180,19 @@ classdef sNIM < NIM
 						snim.subunits(nn) = snim.subunits(nn).normalize_kt();
 						snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
 					end
+					snim.spkNL = nim.spkNL;
 					
+					% Record fit results
 					snim.fit_props = nim.fit_props;
 					snim.fit_props.fit_type = 'T-filter';
 					snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
-
 				end
 		
 				%%
 				function snim = fit_Sfilters( snim, Robs, stims, varargin )
 %					snim = fit_Sfilters( snim, Robs, Xstims, varargin )
-%
-%
+%					Fits spatial filters, and implicitly upstream nonlinearity thresholds
+
 					[nim,Xs] = snim.convert2NIM_space( stims );
 					nim = nim.fit_filters( Robs, Xs, varargin );
 					
@@ -203,6 +203,7 @@ classdef sNIM < NIM
 						snim.subunits(nn).ksp = reshape( nim.subunits(nn).filtK, NSP, snim.subunits(nn).rank );
 						snim.subunits(nn) = snim.subunits(nn).normalize_kt();
 					end
+					snim.spkNL = nim.spkNL;
 					
 					snim.fit_props = nim.fit_props;
 					snim.fit_props.fit_type = 'S-filter';
@@ -222,6 +223,7 @@ classdef sNIM < NIM
 					for nn = 1:length(nim.subunits)
 						snim.subunits(nn).ksp = snim.subunits(nn).ksp * abs(nim.subunits(nn).weight);
 					end
+					snim.spkNL = nim.spkNL;
 					
 					snim.fit_props = nim.fit_props;
 					snim.fit_props.fit_type = 'weights';
@@ -232,6 +234,9 @@ classdef sNIM < NIM
 				%%
 				function snim = reg_pathT( snim, Robs, stims, Uindx, XVindx, varargin )
 %					Usage: snim = reg_pathT( snim, Robs, stims, Uindx, XVindx, varargin )
+%
+%					varargin options: 
+%						'fit_subs': subunits to fit
 
 					varargin{end+1} = 'fit_offsets';
 					varargin{end+1} = 1;
@@ -479,13 +484,19 @@ classdef sNIM < NIM
 						stim_params_list(nn) = NIMstim_params;
 						stim_params_list(nn).dims(3) = NX * rnk;
 						filt_list{nn} = snim.subunits(nn).ksp(:);
+						% Upsample kt if tent-basis representation
+						if ~isempty(NIMstim_params.tent_spacing)
+							kts = LRsub.upsample_kts( NIMstim_params.tent_spacing );
+						else
+							kts = LRsub.kt;
+						end
 						if rnk == 1
-							Xtmp = conv2( stims(indx,:), LRsub.kt, 'full' );
+							Xtmp = conv2( stims(indx,:), kts, 'full' );
 							Xstims{nn}(:,1:NSP ) = Xtmp(1:NT,:);
 						else
 							Xstims{nn} = zeros(NT,NSP*rnk);
 							for mm = 1:rnk
-								Xtmp = conv2( stims(indx,:), LRsub.kt(:,mm), 'full' );
+								Xtmp = conv2( stims(indx,:), kts(:,mm), 'full' );
 								Xstims{nn}(:,(mm-1)*NSP+(1:NSP) ) = Xtmp(1:NT,:);
 							end
 						end
