@@ -29,6 +29,7 @@ classdef sNIM < NIM
 	%% METHODS DEFINED IN SEPARATE FILES
 	methods 
 		[] = display_model( snim, Robs, Xstims, varargin ); %display current model
+		%[] = display_Tfilters( snim, Robs, Xstims, varargin ); %display current model
        %snim = fit_Tfilters(snim, Robs, Xstims, varargin); %filter model time-filters 
        %snim = fit_Sfilters(snim, Robs, Xstims, varargin); %filter model space-filters
 			 % All these will be overloaded
@@ -38,9 +39,12 @@ classdef sNIM < NIM
        %nim = fit_NLparams(nim, Robs, Xstims, varargin); %fit parameters of (parametric) upstream NL functions
        %nim = fit_weights(nim, Robs, Xstims, varargin); %fit linear weights on each subunit
 	end
+	methods (Static)
+		%Xmat = create_time_embedding(stim,params) %make time-embedded stimulus
+	end
 	methods (Static, Hidden)
         %Tmat = create_Tikhonov_matrix(stim_params, reg_type); %make regularization matrices
-        %Xmat = create_time_embedding(stim,params) %make time-embedded stimulus
+ 				%snim = correct_spatial_signs(snim);
 	end
 		
 		
@@ -108,7 +112,7 @@ classdef sNIM < NIM
 				function snim = fit_TSalt( snim, Robs, stims, varargin )
 %					Usage: snim = fit_TSalt( snim, Robs, stims, varargin )
 
-					LLtol = 0.0002; MAXiter = 10;
+					LLtol = 0.0002; MAXiter = 12;
 
 					snim = snim.fit_weights( Robs, stims, 'silent', 1 );
 
@@ -130,12 +134,13 @@ classdef sNIM < NIM
 							fprintf( '  Iter %2d: LL = %f\n', iter, LL )
 						%end
 					end
+					snim = snim.correct_spatial_signs();
 				end
 
 				function snim = fit_STalt( snim, Robs, stims, varargin )
 %					Usage: snim = fit_STalt( snim, Robs, stims, varargin )
 
-					LLtol = 0.0002; MAXiter = 10;
+					LLtol = 0.0002; MAXiter = 12;
 
 					snim = snim.fit_weights( Robs, stims, 'silent', 1 );
 
@@ -157,6 +162,8 @@ classdef sNIM < NIM
 							fprintf( '  Iter %2d: LL = %f\n', iter, LL )
 						%end
 					end
+					
+					snim = snim.correct_spatial_signs();
 				end
 				
 				
@@ -263,6 +270,9 @@ classdef sNIM < NIM
 
 				function snim = reg_pathSP( snim, Robs, stims, Uindx, XVindx, varargin )
 %					Usage: snim = reg_pathSP( snim, Robs, stims, Uindx, XVindx, varargin )
+%
+%					varargin options: 
+%						'fit_subs': subunits to fit
 
 					varargin{end+1} = 'fit_offsets';
 					varargin{end+1} = 1;
@@ -364,19 +374,18 @@ classdef sNIM < NIM
 				end
 
 				function snim = subunit_flip( snim, targets )
-%			  Usage: cnim = subunit_flip( cnim, <targets> )
+%					Usage: cnim = subunit_flip( cnim, <targets> )
 	
-				Nsubs = length(snim.subunits);
-				if nargin < 2
-					targets = 1:Nsubs;
+					Nsubs = length(snim.subunits);
+					if nargin < 2
+						targets = 1:Nsubs;
+					end
+					for tar = targets
+						snim.subunits(tar).kt = -snim.subunits(tar).kt;
+						snim.subunits(tar).ksp = -snim.subunits(tar).ksp;
+					end
 				end
-				for tar = targets
-					snim.subunits(tar).kt = -snim.subunits(tar).kt;
-					snim.subunits(tar).ksp = -snim.subunits(tar).ksp;
-				end
-			end
-			
-
+				
 				
 				function [Uindx,XVindx] = generate_XVfolds( snim, NTstim, Nfold, XVfolds )
 %					Usage: [Uindx,XVindx] = generate_XVfolds( snim, NTstim, <Nfold>, <XVfolds> )
@@ -413,6 +422,37 @@ classdef sNIM < NIM
 						[nim,Xs] = snim.convert2NIM_time( stims );
 						[LL,pred_rate,mod_internals,LL_data] = nim.eval_model( Robs, Xs, varargin );
 
+				end
+
+				function display_Tfilters( snim, clrscheme )
+%					Usage: snim.display_Tfilters( <clrscheme> )
+					% For now just display kts of first rank relative to one another
+					% Default is exc = blue, inh = red, clrscheme > 0 means cycle through bcgrmk
+					
+					if nargin < 2
+						clrscheme = 0;
+					end
+					clrs = 'bcgrmkbcgrmk';  Eclrs = 'bcgbcg'; Iclrs = 'rmrmrm'; 
+					Nmods = length(snim.subunits);
+					Nexc = 0;	Ninh = 0;
+					figure; hold on
+					for nn = 1:Nmods
+						if clrscheme == 0
+							if snim.subunits(nn).weight > 0
+								Nexc = Nexc + 1;
+								clr = Eclrs(Nexc);
+							else
+								Ninh = Ninh + 1;
+								clr = Iclrs(Ninh);
+							end	
+						else
+							clr = clrs(nn);
+						end
+						plot( snim.subunits(nn).kt(:,1), clr );
+						if snim.subunits(nn).rank > 1
+							plot( snim.subunits(nn).kt(:,2), sprintf('%c--', clr) )
+						end
+					end
 				end
 				
 				%function nim = init_spkhist(nim,n_bins,varargin)
@@ -604,27 +644,20 @@ classdef sNIM < NIM
         
         % function nim = set_subunit_scales(nim,fgint)
         
-    end
-    
-%    methods (Static)
-        %function stim_params = create_stim_params(dims,varargin)
-%		end
-		
-    %methods (Static, Hidden)
-		methods (Hidden)
-        %function optim_params = set_optim_params(optimizer,input_params,silent)
-        %function percentiles = my_prctile(x,p)
+			function snim = correct_spatial_signs( snim )
+%				Usage: snim = snim.correct_spatial_signs()
+%					Checks each subunit and rank to make sure spatial maps are all positive
 
-				function nim = rmfields( snim, fields )
-%				This doesn't currently work. Do by hand...
-						fieldlist = setdiff( fieldnames(snim), fields );
-						for nn = 1:length(fieldlist)
-							eval(sprintf('nim.%s = snim.(''%s'');', fieldlist{nn}, fieldlist{nn} ));
+					for nn = 1:length(snim.subunits)
+						for mm = 1:length(snim.subunits(nn).rank)
+							[~,maxloc] = max(abs(snim.subunits(nn).ksp(:,mm)));
+							if snim.subunits(nn).ksp(maxloc,mm) < 0
+								snim.subunits(nn).ksp(:,mm) = -snim.subunits(nn).ksp(:,mm);
+								snim.subunits(nn).kt(:,mm) = -snim.subunits(nn).kt(:,mm);
+							end
 						end
-				end
-				
-		
-				
+					end
+			end
 		end
 		
 

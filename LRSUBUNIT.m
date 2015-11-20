@@ -2,7 +2,7 @@
 classdef LRSUBUNIT < SUBUNIT
     % Class implementing the subunits comprising an NIM model
     %
-    % James McFarland, September 2015
+    % Dan Butts, November 2015
     %%
     properties
 				rank;				 % rank of filter representation. rank = 0 means use filtK
@@ -92,6 +92,19 @@ classdef LRSUBUNIT < SUBUNIT
 					end
 					LRsub.filtK = LRsub.kt * LRsub.ksp';
 					LRsub.filtK = LRsub.filtK(:);
+				end
+
+				function kts = timeshift_kts( LRsub, tshift )
+%				  Usage: kts = LRsub.timeshift_kts( tshift )
+%						Returns shifted versions of the subunit kts
+						
+						[nLags,rnk] = size(LRsub.kt);
+						kts = zeros( nLags, rnk );
+						if tshift < 0
+							kts(1:end-tshift) = LRsub.kt(tshift+1:end,:);
+						else
+							kts(tshift+1:end,:) = LRsub.kt(1:end-tshift,:);
+						end
 				end
 				
 				function kts = upsample_kts( LRsub, tbspace )
