@@ -29,9 +29,9 @@ classdef sNIM < NIM
 	%% METHODS DEFINED IN SEPARATE FILES
 	methods 
 		[] = display_model( snim, Robs, Xstims, varargin ); %display current model
-		%[] = display_Tfilters( snim, Robs, Xstims, varargin ); %display current model
-       %snim = fit_Tfilters(snim, Robs, Xstims, varargin); %filter model time-filters 
-       %snim = fit_Sfilters(snim, Robs, Xstims, varargin); %filter model space-filters
+		%[] = display_Tfilters( snim, Robs, stims, varargin ); %display current model
+       %snim = fit_Tfilters(snim, Robs, stims, varargin); %filter model time-filters 
+       %snim = fit_Sfilters(snim, Robs, stims, varargin); %filter model space-filters
 			 % All these will be overloaded
 			 %snim = fit_filters(snim, Robs, Xstims, varargin); %filter model time-filters 
        %nim = fit_upstreamNLs(nim, Robs, Xstims, varargin); %fit model upstream NLs
@@ -218,6 +218,14 @@ classdef sNIM < NIM
 
 				end
 
+				function snim = fit_filters( snim, Robs, stims, varargin )
+%					Usage: snim = fit_filters( snim, Robs, stims, varargin )
+%
+%					This is an overloaded function to prevent being used. Will go with fit_TSalt
+					fprintf( '\nNote that fit_filters is not strictly defined for sNIM.\nThis will run fit_TSalt.\n' )
+					snim = fit_TSalt( snim, Robs, stims, varargin )
+				end
+				
 				
 				%%
 				function snim = fit_weights( snim, Robs, stims, varargin )
@@ -417,7 +425,13 @@ classdef sNIM < NIM
 				
 				function [LL, pred_rate, mod_internals, LL_data] = eval_model( snim, Robs, stims, varargin )
 %					Usage: [LL, pred_rate, mod_internals, LL_data] = eval_model( snim, Robs, stims, varargin )
-					
+
+						if ~isempty(varargin)
+							if (length(varargin) == 1) && iscell(varargin{1})
+								varargin = varargin{1};
+							end
+						end
+
 						% Translate into NIM and use its process_stimulus
 						[nim,Xs] = snim.convert2NIM_time( stims );
 						[LL,pred_rate,mod_internals,LL_data] = nim.eval_model( Robs, Xs, varargin );
@@ -458,8 +472,41 @@ classdef sNIM < NIM
 				%function nim = init_spkhist(nim,n_bins,varargin)
 				%function nim = init_nonpar_NLs(nim, Xstims, varargin)
 				%function [filt_SE,hessMat] = compute_filter_SEs(nim, Robs, Xstims, varargin)
-		end    
+	
 
+			function [LLs,LLnulls] = eval_model_reps( snim, RobsR, stims, varargin )
+%         Usage: [LLs,LLnulls] = snim.eval_model_reps( RobsR, stims, <eval_inds>, <varargin> )
+%													or
+%								 [LLs,LLnulls] = snim.eval_model_reps( RspksR, Xstims, <eval_inds>, <varargin> )
+%
+%         Evaluates the model on the supplied data. In this case RobsR would be a NT x Nreps matrix. Can
+%         also pass in a list of spike times with repeats separated by -1
+
+					if ~isempty(find(RobsR < 0, 1))  % then its a list of spike times
+						RspksR = RobsR;
+						if RspksR(end) > 0
+							RspksR(end+1) = -1;
+						end
+						Rlocs = find(RspksR == -1);
+						Nreps = length(Rlocs);
+						dt = snim.stim_params(1).dt;
+						NT = size(stims,1) * snim.stim_params(1).up_fac;
+						RobsR = zeros(NT,Nreps);
+						startindx = 1;
+						for nn = 1:Nreps
+							RobsR(:,nn) = histc( RspksR(startindx:(Rlocs(nn)-1)), (0:(NT-1))*dt );
+							startindx = Rlocs(nn) + 1;
+						end
+					end
+						
+					Nreps = size(RobsR,2);
+					LLs = zeros(Nreps,1); 	LLnulls = zeros(Nreps,1);
+					for nn = 1:Nreps
+						[LLs(nn),~,~,LLdata] = snim.eval_model( RobsR(:,nn), stims, varargin);
+						LLnulls(nn) = LLdata.nullLL;
+					end
+				end
+	end
     
     methods (Hidden)
         %% internal methods        
