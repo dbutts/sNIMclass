@@ -85,7 +85,11 @@ classdef LRSUBUNIT < SUBUNIT
 %					LRsub = normalize_kt( LRsub )					
 %					normalize kt (and scales ksp appropriately) and constructs filtK
 
-					nrms = 10*std(LRsub.kt);
+					if length(LRsub.kt) > 1
+						nrms = 10*std(LRsub.kt);
+					else
+						nrms = LRsub.kt;
+					end
 					for ii = 1:LRsub.rank
 						LRsub.kt(:,ii) = LRsub.kt(:,ii)/nrms(ii);
 						LRsub.ksp(:,ii) = LRsub.ksp(:,ii)*nrms(ii);
@@ -94,6 +98,7 @@ classdef LRSUBUNIT < SUBUNIT
 					LRsub.filtK = LRsub.filtK(:);
 				end
 
+				%%
 				function kts = timeshift_kts( LRsub, tshift )
 %				  Usage: kts = LRsub.timeshift_kts( tshift )
 %						Returns shifted versions of the subunit kts

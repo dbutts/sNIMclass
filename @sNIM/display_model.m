@@ -46,9 +46,11 @@ while j <= length(varargin)
     end
 end
 
+Nextra_col = 0;
 spkhstlen = snim.spk_hist.spkhstlen;
 if spkhstlen > 0 && (plot_spk_hist || plot_spkNL)
-    Xspkhst = create_spkhist_Xmat(Robs,snim.spk_hist.bin_edges);
+	Xspkhst = create_spkhist_Xmat(Robs,snim.spk_hist.bin_edges);
+	Nextra_col = 1;
 end
 n_hist_bins = 500; %internal parameter determining histogram resolution
 if ~isempty(stims)
@@ -60,10 +62,153 @@ if ~isempty(stims)
 else
     G = []; gint = [];
 end
-
-% PLOT SPIKING NL FUNCTION
 if ~isempty(G) && plot_spkNL
-    fig_handles.spk_nl = figure();
+	Nextra_col = 1;
+end
+
+% CREATE FIGURE SHOWING INDIVIDUAL SUBUNITS
+for tt = Xtargs(Xtargs > 0) %loop over stimuli
+    cur_subs = sub_inds([snim.subunits(sub_inds).Xtarg] == tt); %set of subunits acting on this stim
+    
+    if ~isempty(cur_subs)
+        fig_handles.stim_filts = figure();
+				
+				maxrank = 0;
+				for imod = 1:length(cur_subs)
+					maxrank = max([maxrank snim.subunits(cur_subs(imod)).rank]);
+				end
+				
+        %if snim.stim_params(tt).dims(3) > 1 %if 2-spatial-dimensional stim
+            %n_columns = nim.stim_params(tt).dims(1) + 1;
+				n_rows = length(cur_subs);
+				if (n_rows == 1) && plot_spk_hist && (spkhstlen > 0)
+					n_rows = 2;
+				end
+				if snim.stim_params(tt).dims(3) > 1
+					n_columns = 1+maxrank + 1 + Nextra_col;
+				else
+					n_columns = 2 + 1 + Nextra_col;
+				end
+				nLags = snim.stim_params(tt).dims(1); %time lags
+        dt = snim.stim_params(tt).dt; %time res
+        %nPix = squeeze(snim.stim_params(tt).dims(2:end)); %spatial dimensions
+        %create filter time lag axis
+        if isempty(snim.stim_params(tt).tent_spacing)
+            tax = (0:(nLags-1))*dt;
+        else
+            tax = (0:snim.stim_params(tt).tent_spacing:(nLags-1)*snim.stim_params(tt).tent_spacing)*dt;
+        end
+        tax = tax * 1000; % put in units of ms
+        
+        for imod = 1:length(cur_subs)
+            cur_sub = snim.subunits(cur_subs(imod));
+            
+							subplot(n_rows,n_columns,n_columns*(imod-1)+1);
+							plot(tax,cur_sub.kt);
+							xr = tax([1 end]);
+							line(xr,[0 0],'color','k','linestyle','--');
+							if diff(xr) > 0
+								xlim(xr);
+							end
+							xlabel('Time lag')
+              ylabel('Filter coef');
+
+							if strcmp(cur_sub.NLtype,'lin')
+                title('Lin','fontsize',14)
+              elseif cur_sub.weight > 0
+                title('Exc','fontsize',14);
+              elseif cur_sub.weight < 0
+                title('Sup','fontsize',14);
+							end
+							
+							cl = max(abs(cur_sub.ksp(:)));
+							if snim.stim_params(tt).dims(3) == 1 %if < 2 spatial dimensions
+								subplot(n_rows,n_columns,n_columns*(imod-1)+2);
+								if prod(snim.stim_params(tt).dims) > 1
+									plot(cur_sub.ksp)
+									xlim([1 snim.stim_params(cur_sub.Xtarg).dims(2)])
+									ylim([-cl cl]*1.05)
+								else
+									title(sprintf('%f',cur_sub.ksp))
+								end
+							else
+								for nn = 1:cur_sub.rank
+									subplot(n_rows,n_columns,n_columns*(imod-1)+nn+1);
+									imagesc(reshape(cur_sub.ksp(:,nn),snim.stim_params(cur_sub.Xtarg).dims(2:3)));
+									caxis([-cl cl]);
+									%colormap(jet);
+									colormap(gray);
+									if diff(snim.stim_params(cur_sub.Xtarg).dims(2:3)) == 0
+										axis square
+									end
+								end
+							end
+						
+            
+            %PLOT UPSTREAM NL
+						subplot(n_rows,n_columns,imod*n_columns-Nextra_col);
+						if ~isempty(gint) %if computing distribution of filtered stim
+                [gendist_y,gendist_x] = hist(gint(:,cur_subs(imod)),n_hist_bins);
+                
+                % Sometimes the gendistribution has a lot of zeros (dont want to screw up plot)
+                [a b] = sort(gendist_y);
+                if a(end) > a(end-1)*1.5
+                    gendist_y(b(end)) = gendist_y(b(end-1))*1.5;
+                end
+            else
+                gendist_x = linspace(-3,3,n_hist_bins); %otherwise, just pick an arbitrary x-axis to plot the NL
+            end
+            if strcmp(cur_sub.NLtype,'nonpar')
+                cur_modx = cur_sub.TBx; cur_mody = cur_sub.TBy;
+            else
+                cur_modx = gendist_x; cur_mody = cur_sub.apply_NL(cur_modx);
+            end
+            cur_xrange = cur_modx([1 end]);
+            
+            if ~isempty(gint)
+								if ~strcmp(cur_sub.NLtype,'lin')
+									[ax,h1,h2] = plotyy(cur_modx,cur_mody,gendist_x,gendist_y);
+									if strcmp(cur_sub.NLtype,'nonpar')
+									  set(h1,'Marker','o');
+									end
+	                set(h1,'linewidth',1)
+								end
+								%axis square
+
+                xlim(ax(1),cur_xrange)
+                xlim(ax(2),cur_xrange);
+                if all(cur_mody == 0)
+                    ylim(ax(1),[-1 1]);
+                else
+                ylim(ax(1),[min(cur_mody) max(cur_mody)]);
+                end
+                set(ax(2),'ytick',[])
+                yl = ylim();
+                line([0 0],yl,'color','k','linestyle','--');
+                ylabel(ax(1),'Subunit output','fontsize',12);
+                %ylabel(ax(2),'Probability','fontsize',12)
+								%axis square
+            else
+                h = plot(cur_modx,cur_mody,'linewidth',1);
+                if strcmp(cur_sub.NLtype,'nonpar')
+                    set(h,'Marker','o');
+                end
+                xlim(cur_xrange)
+                ylim([min(cur_mody) max(cur_mody)]);
+                ylabel('Subunit output','fontsize',12);
+								%axis square
+            end
+            box off
+            %xlabel('Internal generating function')
+						xlabel('g')
+            title('Upstream NL','fontsize',12)
+				end	
+		end		
+end
+
+if ~isempty(G) && plot_spkNL
+    %fig_handles.spk_nl = figure();
+		subplot(n_rows,n_columns,n_columns)
     n_bins = 1000; %bin resolution for G distribution
     [Gdist_y,Gdist_x] = hist(G,n_hist_bins); %histogram the generating signal
     
@@ -85,19 +230,20 @@ if ~isempty(G) && plot_spkNL
     
     [ax,h1,h2] = plotyy(NLx,NLy,Gdist_x,Gdist_y);
     set(h1,'linewidth',1)
-    yr = [min(NLy) max(NLy)];
+    yr = [min([0 min(NLy)]) max(NLy)];
     xlim(ax(1),cur_xrange)
     xlim(ax(2),cur_xrange);
     ylim(ax(1),yr);
     
-    xlabel('Generating function')
-    ylabel(ax(1),'Predicted firing rate','fontsize',14);
-    ylabel(ax(2),'Probability','fontsize',14)
+    xlabel('G')
+    ylabel(ax(1),'Firing rate','fontsize',12);
+    %ylabel(ax(2),'Probability','fontsize',12)
     set(ax(2),'ytick',[]);
-    title('Spiking NL','fontsize',14)
+    title('Spiking NL','fontsize',12)
 end
 
-if snim.spk_hist.spkhstlen > 0 && plot_spk_hist
+if (snim.spk_hist.spkhstlen > 0) && plot_spk_hist
+		subplot(n_columns,n_rows,2*n_columns)
     fig_handles.spk_hist = figure();
     subplot(2,1,1)
     stairs(snim.spk_hist.bin_edges(1:end-1)*snim.stim_params(1).dt,snim.spk_hist.coefs);
@@ -115,133 +261,8 @@ if snim.spk_hist.spkhstlen > 0 && plot_spk_hist
     xl = xlim();
     line(xl,[0 0],'color','k','linestyle','--');
     xlabel('Time lag');
-    ylabel('Spike history filter')
+    ylabel('Spike history')
     title('Spk Hist Log-axis','fontsize',14)
 end
-
-% CREATE FIGURE SHOWING INDIVIDUAL SUBUNITS
-for tt = Xtargs(Xtargs > 0) %loop over stimuli
-    cur_subs = sub_inds([snim.subunits(sub_inds).Xtarg] == tt); %set of subunits acting on this stim
-    
-    if ~isempty(cur_subs)
-        fig_handles.stim_filts = figure();
-				
-				maxrank = 0;
-				for imod = 1:length(cur_subs)
-					maxrank = max([maxrank snim.subunits(cur_subs(imod)).rank]);
-				end
-				
-        %if snim.stim_params(tt).dims(3) > 1 %if 2-spatial-dimensional stim
-            %n_columns = nim.stim_params(tt).dims(1) + 1;
-				n_rows = length(cur_subs);
-				if snim.stim_params(tt).dims(3) > 1
-					n_columns = 1+maxrank + 1;
-				else
-					n_columns = 2 + 1;
-				end
-				nLags = snim.stim_params(tt).dims(1); %time lags
-        dt = snim.stim_params(tt).dt; %time res
-        %nPix = squeeze(snim.stim_params(tt).dims(2:end)); %spatial dimensions
-        %create filter time lag axis
-        if isempty(snim.stim_params(tt).tent_spacing)
-            tax = (0:(nLags-1))*dt;
-        else
-            tax = (0:snim.stim_params(tt).tent_spacing:(nLags-1)*snim.stim_params(tt).tent_spacing)*dt;
-        end
-        tax = tax * 1000; % put in units of ms
-        
-        for imod = 1:length(cur_subs)
-            cur_sub = snim.subunits(cur_subs(imod));
-            
-							subplot(n_rows,n_columns,n_columns*(imod-1)+1);
-							plot(tax,cur_sub.kt);
-							xr = tax([1 end]);
-							line(xr,[0 0],'color','k','linestyle','--');
-							xlim(xr);      
-							xlabel('Time lag')
-              ylabel('Filter coef');
-
-							if strcmp(cur_sub.NLtype,'lin')
-                title('Lin','fontsize',14)
-              elseif cur_sub.weight > 0
-                title('Exc','fontsize',14);
-              elseif cur_sub.weight < 0
-                title('Sup','fontsize',14);
-							end
-							
-							cl = max(abs(cur_sub.ksp(:)));
-							if snim.stim_params(tt).dims(3) == 1 %if < 2 spatial dimensions
-								subplot(n_rows,n_columns,n_columns*(imod-1)+2);
-								plot(cur_sub.ksp)
-								xlim([1 snim.stim_params.dims(2)])
-								ylim([-cl cl]*1.05)
-							else
-								for nn = 1:cur_sub.rank
-									subplot(n_rows,n_columns,n_columns*(imod-1)+nn+1);
-									imagesc(reshape(cur_sub.ksp(:,nn),snim.stim_params.dims(2:3)));
-									caxis([-cl cl]);
-									%colormap(jet);
-									colormap(gray);
-									if diff(snim.stim_params.dims(2:3)) == 0
-										axis square
-									end
-								end
-							end
-						
-            
-            %PLOT UPSTREAM NL
-						subplot(n_rows,n_columns,imod*n_columns);
-						if ~isempty(gint) %if computing distribution of filtered stim
-                [gendist_y,gendist_x] = hist(gint(:,cur_subs(imod)),n_hist_bins);
-                
-                % Sometimes the gendistribution has a lot of zeros (dont want to screw up plot)
-                [a b] = sort(gendist_y);
-                if a(end) > a(end-1)*1.5
-                    gendist_y(b(end)) = gendist_y(b(end-1))*1.5;
-                end
-            else
-                gendist_x = linspace(-3,3,n_hist_bins); %otherwise, just pick an arbitrary x-axis to plot the NL
-            end
-            if strcmp(cur_sub.NLtype,'nonpar')
-                cur_modx = cur_sub.TBx; cur_mody = cur_sub.TBy;
-            else
-                cur_modx = gendist_x; cur_mody = cur_sub.apply_NL(cur_modx);
-            end
-            cur_xrange = cur_modx([1 end]);
-            
-            if ~isempty(gint)
-                [ax,h1,h2] = plotyy(cur_modx,cur_mody,gendist_x,gendist_y);
-                if strcmp(cur_sub.NLtype,'nonpar')
-                    set(h1,'Marker','o');
-                end
-                set(h1,'linewidth',1)
-                xlim(ax(1),cur_xrange)
-                xlim(ax(2),cur_xrange);
-                if all(cur_mody == 0)
-                    ylim(ax(1),[-1 1]);
-                else
-                ylim(ax(1),[min(cur_mody) max(cur_mody)]);
-                end
-                set(ax(2),'ytick',[])
-                yl = ylim();
-                line([0 0],yl,'color','k','linestyle','--');
-                ylabel(ax(1),'Subunit output','fontsize',12);
-                ylabel(ax(2),'Probability','fontsize',12)
-            else
-                h = plot(cur_modx,cur_mody,'linewidth',1);
-                if strcmp(cur_sub.NLtype,'nonpar')
-                    set(h,'Marker','o');
-                end
-                xlim(cur_xrange)
-                ylim([min(cur_mody) max(cur_mody)]);
-                ylabel('Subunit output','fontsize',12);
-            end
-            box off
-            xlabel('Internal generating function')
-            title('Upstream NL','fontsize',14)
-				end	
-		end		
-end
-
 
 

@@ -28,7 +28,7 @@ classdef sNIM < NIM
     
 	%% METHODS DEFINED IN SEPARATE FILES
 	methods 
-		[] = display_model( snim, Robs, Xstims, varargin ); %display current model
+		[] = display_model( snim, stims, Robs, varargin ); %display current model
 		%[] = display_Tfilters( snim, Robs, stims, varargin ); %display current model
        %snim = fit_Tfilters(snim, Robs, stims, varargin); %filter model time-filters 
        %snim = fit_Sfilters(snim, Robs, stims, varargin); %filter model space-filters
@@ -91,7 +91,7 @@ classdef sNIM < NIM
 				% Now convert to SNIM
 				snim.spkNL = nim.spkNL;
 				for nn = 1:Nsubs
-					snim.subunits = cat(1,snim.subunits,LRSUBUNIT( nim.subunits(nn), nim.stim_params.dims(1), ranks(nn) ) );
+					snim.subunits = cat(1,snim.subunits,LRSUBUNIT( nim.subunits(nn), nim.stim_params(nim.subunits(nn).Xtarg).dims(1), ranks(nn) ) );
 				end
 				snim.stim_params = nim.stim_params;
 				snim.noise_dist = nim.noise_dist;
@@ -114,25 +114,42 @@ classdef sNIM < NIM
 
 					LLtol = 0.0002; MAXiter = 12;
 
-					snim = snim.fit_weights( Robs, stims, 'silent', 1 );
+					if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin{1})
+						varargin = varargin{1};
+					end
+
+					% Check to see if silent (for alt function)
+					silent = 0;
+					if ~isempty(varargin)
+						for j = 1:length(varargin)
+							if strcmp( varargin{j}, 'silent' )
+								silent = varargin{j+1};
+							end
+						end
+					end
+					
+					varargin{end+1} = 'silent';
+					varargin{end+1} = 1;
+
+					snim = snim.fit_weights( Robs, stims, varargin );
 
 					LL = snim.fit_props.LL; LLpast = -1e10;
-					%if ~silent
+					if ~silent
 						fprintf( 'Beginning LL = %f\n', LL )
-					%end
+					end
 					iter = 1;
 					while (((LL-LLpast) > LLtol) && (iter < MAXiter))
 	
-						snim = snim.fit_Tfilters( Robs, stims, 'silent', 1 );
-						snim = snim.fit_Sfilters( Robs, stims, 'silent', 1 );
+						snim = snim.fit_Tfilters( Robs, stims, varargin );
+						snim = snim.fit_Sfilters( Robs, stims, varargin );
 
 						LLpast = LL;
 						LL = snim.fit_props.LL;
 						iter = iter + 1;
 
-						%if ~silent
+						if ~silent
 							fprintf( '  Iter %2d: LL = %f\n', iter, LL )
-						%end
+						end
 					end
 					snim = snim.correct_spatial_signs();
 				end
@@ -140,9 +157,25 @@ classdef sNIM < NIM
 				function snim = fit_STalt( snim, Robs, stims, varargin )
 %					Usage: snim = fit_STalt( snim, Robs, stims, varargin )
 
-					LLtol = 0.0002; MAXiter = 12;
+					if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin{1})
+						varargin = varargin{1};
+					end
 
-					snim = snim.fit_weights( Robs, stims, 'silent', 1 );
+					% Check to see if silent (for alt function)
+					silent = 0;
+					if ~isempty(varargin)
+						for j = 1:length(varargin)
+							if strcmp( varargin{j}, 'silent' );
+								silent = varargin{j+1};
+							end
+						end
+					end
+					
+					LLtol = 0.0002; MAXiter = 12;
+					varargin{end+1} = 'silent';
+					varargin{end+1} = 1;
+
+					snim = snim.fit_weights( Robs, stims, varargin );
 
 					LL = snim.fit_props.LL; LLpast = -1e10;
 					%if ~silent
@@ -151,8 +184,8 @@ classdef sNIM < NIM
 					iter = 1;
 					while (((LL-LLpast) > LLtol) && (iter < MAXiter))
 	
-						snim = snim.fit_Sfilters( Robs, stims, 'silent', 1 );
-						snim = snim.fit_Tfilters( Robs, stims, 'silent', 1 );
+						snim = snim.fit_Sfilters( Robs, stims, varargin );
+						snim = snim.fit_Tfilters( Robs, stims, varargin );
 
 						LLpast = LL;
 						LL = snim.fit_props.LL;
@@ -172,6 +205,10 @@ classdef sNIM < NIM
 %					snim = fit_Tfilters( snim, Robs, Xstims, varargin )
 %					Fits temporal filters, and implicitly upstream nonlinearity thresholds
 
+					if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin)
+						varargin = varargin{1};
+					end
+
 					% Fit thresholds by default
 					varargin{end+1} = 'fit_offsets';
 					varargin{end+1} = 1;
@@ -180,9 +217,9 @@ classdef sNIM < NIM
 					nim = nim.fit_filters( Robs, Xs, varargin );
 					
 					% Scoop fit filters back into old struct
-					nLags = nim.stim_params(1).dims(1);
 					Nmods = length(snim.subunits);
 					for nn = 1:Nmods
+						nLags = nim.stim_params(nim.subunits(nn).Xtarg).dims(1);
 						snim.subunits(nn).kt = reshape( nim.subunits(nn).filtK, nLags/snim.subunits(nn).rank, snim.subunits(nn).rank );
 						snim.subunits(nn) = snim.subunits(nn).normalize_kt();
 						snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
@@ -200,13 +237,17 @@ classdef sNIM < NIM
 %					snim = fit_Sfilters( snim, Robs, Xstims, varargin )
 %					Fits spatial filters, and implicitly upstream nonlinearity thresholds
 
+					if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin)
+						varargin = varargin{1};
+					end
+
 					[nim,Xs] = snim.convert2NIM_space( stims );
 					nim = nim.fit_filters( Robs, Xs, varargin );
 					
 					% Scoop fit filters back into old struct
-					NSP = prod(snim.stim_params.dims(2:3));
 					Nmods = length(snim.subunits);
 					for nn = 1:Nmods
+						NSP = prod(snim.stim_params(snim.subunits(nn).Xtarg).dims(2:3));
 						snim.subunits(nn).ksp = reshape( nim.subunits(nn).filtK, NSP, snim.subunits(nn).rank );
 						snim.subunits(nn) = snim.subunits(nn).normalize_kt();
 					end
@@ -223,7 +264,7 @@ classdef sNIM < NIM
 %
 %					This is an overloaded function to prevent being used. Will go with fit_TSalt
 					fprintf( '\nNote that fit_filters is not strictly defined for sNIM.\nThis will run fit_TSalt.\n' )
-					snim = fit_TSalt( snim, Robs, stims, varargin )
+					snim = fit_TSalt( snim, Robs, stims, varargin );
 				end
 				
 				
@@ -232,6 +273,10 @@ classdef sNIM < NIM
 %	        snim = fit_weights( snim, Robs, stims, varargin )
 %					Scales spatial functions to optimal weights
 
+					if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin)
+						varargin = varargin{1};
+					end
+					
 					[nim,Xs] = snim.convert2NIM_time( stims );
 					nim = nim.fit_weights( Robs, Xs, varargin );
 					
@@ -262,9 +307,9 @@ classdef sNIM < NIM
 					nim = nim.reg_path( Robs, Xs, Uindx, XVindx, varargin );
 					
 					% Scoop fit filters back into old struct
-					nLags = nim.stim_params(1).dims(1);
 					Nmods = length(snim.subunits);
 					for nn = 1:Nmods
+						nLags = nim.stim_params(nim.subunits(nn).Xtarg).dims(1);
 						snim.subunits(nn).kt = reshape( nim.subunits(nn).filtK, nLags/snim.subunits(nn).rank, snim.subunits(nn).rank );
 						snim.subunits(nn) = snim.subunits(nn).normalize_kt();
 						snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
@@ -291,9 +336,9 @@ classdef sNIM < NIM
 					nim = nim.reg_path( Robs, Xs, Uindx, XVindx, varargin );
 					
 					% Scoop fit filters back into old struct
-					NSP = prod(nim.stim_params(1).dims(2:3));
 					Nmods = length(snim.subunits);
 					for nn = 1:Nmods
+						NSP = prod(nim.stim_params(nim.subunits(nn).Xtarg).dims(2:3));
 						snim.subunits(nn).ksp = reshape( nim.subunits(nn).filtK, NSP/snim.subunits(nn).rank, snim.subunits(nn).rank );
 						snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
 						snim.subunits(nn).reg_lambdas.d2x = nim.subunits(nn).reg_lambdas.d2x;
@@ -304,6 +349,15 @@ classdef sNIM < NIM
 					snim.fit_history = cat( 1, snim.fit_history, nim.fit_props );
 				end
 
+				function snim = reg_path( snim, Robs, stims, Uindx, XVindx, varargin )
+					display( 'Note this function does not exist for sNIM. Running reg_pathT' )
+					if nargin < 6
+						snim = reg_pathT( snim, Robs, stims, Uindx, XVindx );
+					else
+						snim = reg_pathT( snim, Robs, stims, Uindx, XVindx, varargin );
+					end
+				end
+				
 				%%
         function snim = add_subunits(snim,NLtypes,mod_signs,varargin)
 %         Usage: snim = snim.add_subunits( NLtypes, mod_signs, varargin)
@@ -365,7 +419,7 @@ classdef sNIM < NIM
 						added_subunits = snim2.subunits(length(snim.subunits)+(1:Nsubsadded));
 						if ~isempty(kts)
 							for nn = 1:length(kts)
-								added_subunits(nn).kt = kts{nn};
+								added_subunits(nn).kt = kts{nn}(:);
 							end
 						end
 						if isempty(ksps)
@@ -374,7 +428,7 @@ classdef sNIM < NIM
 							end
 						else
 							for nn = 1:length(ksps)
-								added_subunits(nn).ksp = ksps{nn};
+								added_subunits(nn).ksp = ksps{nn}(:);
 							end
 						end
 						
@@ -438,6 +492,12 @@ classdef sNIM < NIM
 
 				end
 
+				function display_model_dab( snim, stims, Robs, varargin )
+%					Usage: Not supported with sNIM -- use display_model(...)
+					disp( 'This display function is not supported with sNIM. Using standard' );
+					display_model( snim, stims, Robs, varargin ); %display current model
+				end
+				
 				function display_Tfilters( snim, clrscheme )
 %					Usage: snim.display_Tfilters( <clrscheme> )
 					% For now just display kts of first rank relative to one another
@@ -446,6 +506,9 @@ classdef sNIM < NIM
 					if nargin < 2
 						clrscheme = 0;
 					end
+					dt = snim.stim_params(1).dt*snim.stim_params(1).tent_spacing; %/snim.stim_params(1).up_fac;
+					nLags = snim.stim_params(1).dims(1);
+					
 					clrs = 'bcgrmkbcgrmk';  Eclrs = 'bcgbcg'; Iclrs = 'rmrmrm'; 
 					Nmods = length(snim.subunits);
 					Nexc = 0;	Ninh = 0;
@@ -462,11 +525,13 @@ classdef sNIM < NIM
 						else
 							clr = clrs(nn);
 						end
-						plot( snim.subunits(nn).kt(:,1), clr );
+						plot( (0:nLags-1)*dt,snim.subunits(nn).kt(:,1), clr, 'LineWidth',0.8 );
 						if snim.subunits(nn).rank > 1
-							plot( snim.subunits(nn).kt(:,2), sprintf('%c--', clr) )
+							plot( (0:nLags-1)*dt, snim.subunits(nn).kt(:,2), sprintf('%c--', clr), 'LineWidth',0.8 )
 						end
 					end
+					plot( [0 (nLags-1)*dt],[0 0],'k','LineWidth',0.5)
+					xlim([0 (nLags-1)*dt])
 				end
 				
 				%function nim = init_spkhist(nim,n_bins,varargin)
@@ -555,35 +620,38 @@ classdef sNIM < NIM
 %								nim: new nim object
 %								Xstims: design matrices to pair with NIM
 
+					if ~iscell(stims) % enforce use of cells to list stims going into model
+						tmp = stims;
+						clear stims
+						stims{1} = tmp;
+					end
+					
 					Nmods = length(snim.subunits);
-					NIMstim_params = snim.stim_params;
-					NIMstim_params.dims(1) = 1;
-					NSP = prod(NIMstim_params.dims(2:3));
-					NX = NIMstim_params.dims(3);
-					NT = size(stims,1)*NIMstim_params.up_fac;
-					indx = floor((0:(NT-1))/NIMstim_params.up_fac)+1;
-					%nim = snim.rmfields( {'subunits','stim_params'} );
-					%nim = snim.stripfields();
+					NT = size(stims{1},1)*snim.stim_params(1).up_fac;
+					indx = floor((0:(NT-1))/snim.stim_params(1).up_fac)+1;
 					
 					for nn = 1:Nmods
 						LRsub = snim.subunits(nn);
 						rnk = LRsub.rank;
-						stim_params_list(nn) = NIMstim_params;
+						stim_params_list(nn) = snim.stim_params(LRsub.Xtarg);
+						stim_params_list(nn).dims(1) = 1;
+						NSP = prod(stim_params_list(nn).dims(2:3));
+						NX = stim_params_list(nn).dims(3);
 						stim_params_list(nn).dims(3) = NX * rnk;
 						filt_list{nn} = snim.subunits(nn).ksp(:);
 						% Upsample kt if tent-basis representation
-						if ~isempty(NIMstim_params.tent_spacing)
-							kts = LRsub.upsample_kts( NIMstim_params.tent_spacing );
+						if ~isempty(stim_params_list(nn).tent_spacing)
+							kts = LRsub.upsample_kts( stim_params_list(nn).tent_spacing );
 						else
 							kts = LRsub.kt;
 						end
 						if rnk == 1
-							Xtmp = conv2( stims(indx,:), kts, 'full' );
+							Xtmp = conv2( stims{LRsub.Xtarg}(indx,:), kts, 'full' );
 							Xstims{nn}(:,1:NSP ) = Xtmp(1:NT,:);
 						else
 							Xstims{nn} = zeros(NT,NSP*rnk);
 							for mm = 1:rnk
-								Xtmp = conv2( stims(indx,:), kts(:,mm), 'full' );
+								Xtmp = conv2( stims{LRsub.Xtarg}(indx,:), kts(:,mm), 'full' );
 								Xstims{nn}(:,(mm-1)*NSP+(1:NSP) ) = Xtmp(1:NT,:);
 							end
 						end
@@ -606,31 +674,37 @@ classdef sNIM < NIM
 %            OUPUTS: 
 %								nim: new nim object
 %								Xstims: design matrices to pair with NIM
-					
+
+					if ~iscell(stims) % enforce use of cells to list stims going into model
+						tmp = stims;
+						clear stims
+						stims{1} = tmp;
+					end
+
 					Nmods = length(snim.subunits);
-					NIMstim_params = snim.stim_params;
-					NIMstim_params.dims(2:3) = 1;
-					nLags = NIMstim_params.dims(1);
-					NT = size(stims,1)*NIMstim_params.up_fac;
-					%nim = rmfields(snim,{'subunits','stim_params'});
-					%nim = snim.stripfields();
+					NT = size(stims{1},1)*snim.stim_params(1).up_fac;  % assuming all same up_fac
 		
 					for nn = 1:Nmods
 						LRsub = snim.subunits(nn);
 						rnk = LRsub.rank;
-						stim_params_list(nn) = NIMstim_params;
-						stim_params_list(nn).dims(1) = nLags * rnk;
+						stim_params_list(nn) = snim.stim_params(LRsub.Xtarg);
+						nLags = stim_params_list(nn).dims(1);
+						stim_params_list(nn).dims(2:3) = 1;
+
+						%stim_params_list(nn).dims(1) = nLags * rnk;
 						filt_list{nn} = snim.subunits(nn).kt(:);
 						
 						if rnk == 1
-							Xstims{nn} = NIM.create_time_embedding( stims * LRsub.ksp, NIMstim_params );
+							Xstims{nn} = NIM.create_time_embedding( stims{LRsub.Xtarg} * LRsub.ksp, stim_params_list(nn) );
 						else
 							Xstims{nn} = zeros(NT,nLags*rnk);
 							for mm = 1:rnk
-								Xstims{nn}(:,(mm-1)*nLags+(1:nLags)) = NIM.create_time_embedding( stims * LRsub.ksp(:,mm), NIMstim_params );
+								Xstims{nn}(:,(mm-1)*nLags+(1:nLags)) = NIM.create_time_embedding( stims{LRsub.Xtarg} * LRsub.ksp(:,mm), stim_params_list(nn) );
 							end
+							stim_params_list(nn).dims(1) = nLags * rnk;
 						end
 					end
+					
 					nim = snim.convert2NIM( stim_params_list, filt_list, 1:Nmods );
 
 					% Remove spatial regularization
