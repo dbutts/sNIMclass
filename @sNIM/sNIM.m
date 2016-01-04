@@ -263,7 +263,12 @@ classdef sNIM < NIM
 %					Usage: snim = fit_filters( snim, Robs, stims, varargin )
 %
 %					This is an overloaded function to prevent being used. Will go with fit_TSalt
-					fprintf( '\nNote that fit_filters is not strictly defined for sNIM.\nThis will run fit_TSalt.\n' )
+
+					%fprintf( '\nNote that fit_filters is not strictly defined for sNIM.\nThis will run fit_TSalt.\n' )
+					if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin{1})
+						varargin = varargin{1};
+					end
+					
 					snim = fit_TSalt( snim, Robs, stims, varargin );
 				end
 				
@@ -628,11 +633,11 @@ classdef sNIM < NIM
 					
 					Nmods = length(snim.subunits);
 					NT = size(stims{1},1)*snim.stim_params(1).up_fac;
-					indx = floor((0:(NT-1))/snim.stim_params(1).up_fac)+1;
 					
 					for nn = 1:Nmods
 						LRsub = snim.subunits(nn);
 						rnk = LRsub.rank;
+						indx = floor((0:(NT-1))/snim.stim_params(LRsub.Xtarg).up_fac)+1;
 						stim_params_list(nn) = snim.stim_params(LRsub.Xtarg);
 						stim_params_list(nn).dims(1) = 1;
 						NSP = prod(stim_params_list(nn).dims(2:3));
@@ -682,7 +687,7 @@ classdef sNIM < NIM
 					end
 
 					Nmods = length(snim.subunits);
-					NT = size(stims{1},1)*snim.stim_params(1).up_fac;  % assuming all same up_fac
+					NT = size(stims{1},1)*snim.stim_params(1).up_fac;  % assuming all same NT
 		
 					for nn = 1:Nmods
 						LRsub = snim.subunits(nn);
