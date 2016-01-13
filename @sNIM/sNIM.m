@@ -261,14 +261,9 @@ classdef sNIM < NIM
 
 				function snim = fit_filters( snim, Robs, stims, varargin )
 %					Usage: snim = fit_filters( snim, Robs, stims, varargin )
-%
 %					This is an overloaded function to prevent being used. Will go with fit_TSalt
 
-					%fprintf( '\nNote that fit_filters is not strictly defined for sNIM.\nThis will run fit_TSalt.\n' )
-					%if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin{1})
-					%	varargin = varargin{1};
-					%end
-					
+					%fprintf( '\nNote that fit_filters is not strictly defined for sNIM.\nThis will run fit_TSalt.\n' )					
 					snim = fit_TSalt( snim, Robs, stims, varargin{:} );
 				end
 				
@@ -277,10 +272,6 @@ classdef sNIM < NIM
 				function snim = fit_weights( snim, Robs, stims, varargin )
 %	        snim = fit_weights( snim, Robs, stims, varargin )
 %					Scales spatial functions to optimal weights
-
-					%if ~isempty(varargin) && (length(varargin) == 1) && iscell(varargin)
-					%	varargin = varargin{1};
-					%end
 					
 					[nim,Xs] = snim.convert2NIM_time( stims );
 					nim = nim.fit_weights( Robs, Xs, varargin{:} );
@@ -295,7 +286,26 @@ classdef sNIM < NIM
 					snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
 
 				end
-				
+
+				%% 
+				function snim = fit_upstreamNLs( snim, Robs, stims, varargin )
+%	        snim = fit_upstreamNLs( snim, Robs, stims, varargin )
+%					Fit nonparametric nonlinearity
+					
+					[nim,Xs] = snim.convert2NIM_time( stims );
+					nim = nim.fit_upstreamNLs( Robs, Xs, varargin{:} );
+					
+					for nn = 1:length(snim.subunits)
+						snim.subunits(nn).NLnonpar = nim.subunits(nn).NLnonpar;
+					end
+					snim.spkNL = nim.spkNL;
+					snim.spk_hist = nim.spk_hist;
+					
+					snim.fit_props = nim.fit_props;
+					snim.fit_props.fit_type = 'nonparNL';
+					snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
+				end
+
 				%%
 				function snim = reg_pathT( snim, Robs, stims, Uindx, XVindx, varargin )
 %					Usage: snim = reg_pathT( snim, Robs, stims, Uindx, XVindx, varargin )
@@ -437,10 +447,9 @@ classdef sNIM < NIM
 					% Transfer nonlinearities back to snim
 					for nn = 1:length(snim.subunits)
 						snim.subunits(nn).NLtype = nimNLs.subunits(nn).NLtype;
-						snim.subunits(nn).TBy = nimNLs.subunits(nn).TBy;
-						snim.subunits(nn).TBx = nimNLs.subunits(nn).TBx;
-						snim.subunits(nn).reg_lambdas = nimNLs.subunits(nn).reg_lambdas
-						if ~strcmp(snim.subunits(nn).NLtype,'nonpar')
+						snim.subunits(nn).NLnonpar = nimNLs.subunits(nn).NLnonpar;
+						snim.subunits(nn).reg_lambdas.nld2 = nimNLs.subunits(nn).reg_lambdas.nld2;
+						if strcmp(snim.subunits(nn).NLtype,'nonpar')
 							snim.subunits(nn).NLoffset = 0;
 						end
 					end
@@ -822,8 +831,7 @@ classdef sNIM < NIM
 						nim.subunits(nn).NLoffset = snim.subunits(nn).NLoffset;
 						%nim.subunits(nn).weight = snim.subunits(nn).weight;
 						nim.subunits(nn).reg_lambdas = snim.subunits(nn).reg_lambdas;
-						nim.subunits(nn).TBy = snim.subunits(nn).TBy; 
-						nim.subunits(nn).TBx = snim.subunits(nn).TBx; 
+						nim.subunits(nn).NLnonpar = snim.subunits(nn).NLnonpar;
 					end
 				end
 
