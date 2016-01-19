@@ -13,7 +13,7 @@ classdef sNIM < NIM
 %        noise_dist;     %noise distribution class specifying the noise model
 %        spk_hist;       %class defining the spike-history filter properties
 %        fit_props;      %struct containing information about model fit evaluations
-%        fit_hist;       %struct containing info about history of fitting
+%        fit_history;    %struct containing info about history of fitting
 	end
     
 	properties (Hidden)
@@ -385,23 +385,11 @@ classdef sNIM < NIM
 					%	varargin = varargin{1};
 					%end
 					
-					lambdaID = 'd2xt';
-					pos = 1; jj = 1;
-					if ~ischar(varargin{jj})  %if not a flag, it must be train_inds
-						modvarargin{pos} = varargin{jj};
-						jj = jj + 1; pos = pos + 1;
-					end
-					while jj <= length(varargin)
-						switch varargin{jj}
-							case 'lambdaID'
-								lambdaID = varargin{jj+1};
-								jj = jj + 2;
-							otherwise
-								modvarargin{pos} = varargin{jj};
-								modvarargin{pos+1} = varargin{jj+1};
-								pos = pos + 2;
-								jj = jj + 2;
-						end
+					[~,parsed_options,modvarargin] = NIM.parse_varargin( varargin, {'lambdaID'} );
+					if isfield(parsed_options,'lambdaID')
+						lambdaID = parsed_options.lambdaID;
+					else
+						lambdaID = 'd2xt';
 					end
 
 					if strcmp(lambdaID,'l1')

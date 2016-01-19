@@ -165,14 +165,12 @@ for tt = Xtargs(Xtargs > 0) %loop over stimuli
             end
             cur_xrange = cur_modx([1 end]);
             
-            if ~isempty(gint)
-								if ~strcmp(cur_sub.NLtype,'lin')
+            if ~isempty(gint) && ~strcmp(cur_sub.NLtype,'lin')
 									[ax,h1,h2] = plotyy(cur_modx,cur_mody,gendist_x,gendist_y);
 									if strcmp(cur_sub.NLtype,'nonpar')
 									  set(h1,'Marker','o');
 									end
 	                set(h1,'linewidth',1)
-								end
 								%axis square
 
                 xlim(ax(1),cur_xrange)
@@ -184,6 +182,7 @@ for tt = Xtargs(Xtargs > 0) %loop over stimuli
                 end
                 set(ax(2),'ytick',[])
                 yl = ylim();
+
                 line([0 0],yl,'color','k','linestyle','--');
                 ylabel(ax(1),'Subunit output','fontsize',12);
                 %ylabel(ax(2),'Probability','fontsize',12)
