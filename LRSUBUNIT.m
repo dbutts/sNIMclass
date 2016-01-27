@@ -125,7 +125,109 @@ classdef LRSUBUNIT < SUBUNIT
 						end
 						kts = kts(2:end-1,:);  % shift off first latency (one lag in the future)
 				end
-						
+					
+%% DISPLAY FUNCTIONS
+	function [] = display_filter( subunit, dims, varargin )
+	% Usage: [] = subunit.display_filter( dims, <plot_location>, varargin )
+	%
+	% Plots low-rank subunit filter in a 2-row, 1-column subplot
+	% INPUTS:
+	%	  plot_location: 3-integer list = [Fig_rows Fig_col Loc] arguments to subplot. Default = [1 2 1]
+	%	  optional arguments (varargin)
+	%	    'color': enter to specify color order of non-image-plots (default is 'bcgrm...').
+	%			'colormap': choose colormap for 2-D plots. Default is 'gray'
+	%	    'dt': enter if you want time axis scaled by dt
+	%	    'time_rev': plot temporal filter reversed in time (zero lag on right)
+	%	    'xt_rev': plot 2-D plots with time on x-axis
+	%	    'notitle': suppress title labeling subunit type
+	
+		assert((nargin > 1) && ~isempty(dims), 'Must enter filter dimensions.' )
+		[plotloc,parsed_options] = NIM.parse_varargin( varargin );
+		if isempty(plotloc)
+			plotloc = [1 2 1];
 		end
+		assert(plotloc(3) <= prod(plotloc(1:2)),'Invalid plot location.')
+		if isfield(parsed_options,'color')
+			clrs = parsed_options.color;
+		else
+			clrs = 'bcgrm';
+		end
+		Nclrs = length(clrs);
+		
+		if isfield(parsed_options,'colormap')
+			clrmap = parsed_options.colormap;
+		else
+			clrmap = 'gray';
+		end
+		
+		% Time axis details
+		NT = dims(1);
+		if isfield(parsed_options,'dt')
+			dt = parsed_options.dt;
+		else
+			dt = 1;
+		end
+		if isfield(parsed_options,'time_rev')
+			ts = -dt*(0:NT-1);
+		else
+			ts = dt*(1:NT);
+			if isfield(parsed_options,'dt')
+				ts = ts-dt;  % if entering dt into time axis, shift to zero lag
+			end
+		end
+
+		L = max(subunit.kt(:))-min(subunit.kt(:));
+
+		% Plot temporal filter(s)
+		subplot( plotloc(1), plotloc(2), plotloc(3) ); hold on
+		for nn = 1:subunit.rank
+			plot( ts, subunit.kt(:,nn), clrs(mod(nn-1,Nclrs)+1), 'LineWidth',0.8 );
+			axis([min(ts) max(ts) min(subunit.kt(:))+L*[-0.1 1.1]])
+			if isfield(parsed_options,'time_rev')
+				box on
+			else
+				box off
+			end
+		end
+		plot( [ts(1) ts(end)],[0 0],'k' )  % plot axis
+		
+		% Add title
+		if ~isfield(parsed_options,'notitle')
+			if strcmp(subunit.NLtype,'lin')
+				title(sprintf('Lin'),'fontsize',10);
+			elseif subunit.weight == 1
+				title(sprintf('Exc'),'fontsize',10);
+			elseif subunit.weight == -1				
+				title(sprintf('Sup'),'fontsize',10);			
+			end	
+		end
+		
+		% Plot spatial filter(s)
+		subplot( plotloc(1), plotloc(2), plotloc(3)+1 ); 
+		if dims(3) == 1
+
+			% then 1-d spatial
+			hold on
+			for nn = 1:subunit.rank
+				plot( subunit.ksp(:,nn), clrs(mod(nn-1,Nclrs)+1), 'LineWidth',0.8 );
+			end
+			plot( [1 dims(2)],[0 0],'k' )  % plot axis
+			L = max(subunit.ksp(:))-min(subunit.ksp(:));
+			axis([1 dims(2) min(subunit.ksp(:))+L*[-0.1 1.1]])
+		else	
+			
+			% 2-d spatial
+			if subunit.rank > 1
+				warning( 'This function will only display first spatial filter.' )
+			end
+			imagesc( reshape(subunit.ksp,dims(2:3)), max(abs(subunit.ksp(:)))*[-1 1] )
+			colormap(clrmap)
+			if dims(2) == dims(3)
+				axis square
+			end
+		end
+	end
+
+end
 end
 

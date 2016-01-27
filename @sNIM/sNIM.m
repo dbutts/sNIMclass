@@ -337,7 +337,7 @@ classdef sNIM < NIM
 					
 					snim.fit_props = nim.fit_props;
 					snim.fit_props.fit_type = 'T-regularization';
-					snim.fit_history = cat( 1, snim.fit_history, nim.fit_props );
+					snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
 				end
 
 				function snim = reg_pathSP( snim, Robs, stims, Uindx, XVindx, varargin )
