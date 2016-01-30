@@ -28,7 +28,7 @@ classdef sNIM < NIM
     
 	%% METHODS DEFINED IN SEPARATE FILES
 	methods 
-		[] = display_model( snim, stims, Robs, varargin ); %display current model
+		[] = display_model_dab( snim, stims, Robs, varargin ); %display current model
 		%[] = display_Tfilters( snim, Robs, stims, varargin ); %display current model
        %snim = fit_Tfilters(snim, Robs, stims, varargin); %filter model time-filters 
        %snim = fit_Sfilters(snim, Robs, stims, varargin); %filter model space-filters
@@ -575,12 +575,6 @@ classdef sNIM < NIM
 						[nim,Xs] = snim.convert2NIM_time( stims );
 						[LL,pred_rate,mod_internals,LL_data] = nim.eval_model( Robs, Xs, varargin{:} );
 
-				end
-
-				function display_model_dab( snim, stims, Robs, varargin )
-%					Usage: Not supported with sNIM -- use display_model(...)
-					disp( 'This display function is not supported with sNIM. Using standard' );
-					display_model( snim, stims, Robs, varargin{:} ); %display current model
 				end
 				
 				function display_Tfilters( snim, clrscheme )

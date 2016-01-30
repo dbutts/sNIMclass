@@ -1,5 +1,5 @@
-function [] = display_model( snim, stims, Robs, varargin )
-%         [] = snim.display_model( <Robs>, <Xstims>, varargin )
+function [] = display_model_dab( snim, stims, Robs, varargin )
+%         [] = snim.display_model_dab( <Robs>, <Xstims>, varargin )
 %         Creates a display of the elements of a given NIM
 %              INPUTS:
 %                   <Robs>: observed spiking data. Needed if you want to utilize a spike-history
