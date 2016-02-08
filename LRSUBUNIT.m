@@ -238,6 +238,9 @@ methods
 			else
 				colormap( 'gray' );
 			end
+			if dims(2) == dims(3)
+				axis square
+			end
 		end
 	end
 	
