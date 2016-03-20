@@ -41,6 +41,7 @@ methods
 end
 methods (Static)
 	%Xmat = create_time_embedding(stim,params) %make time-embedded stimulus
+	sta = spike_triggered_average( Robs, stims, stim_params )
 end
 methods (Static, Hidden)
 	%Tmat = create_Tikhonov_matrix(stim_params, reg_type); %make regularization matrices
@@ -273,6 +274,18 @@ methods
 					
 		snim.fit_props = nim.fit_props;
 		snim.fit_props.fit_type = 'weights';
+		snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
+	end
+
+	function snim = fit_spkNL( snim, Robs, stims, varargin )
+	% Usage: snim = snim.fit_spkNL( Robs, stims, varargin ) 
+	
+		[nim,Xs] = snim.convert2NIM_time( stims );
+		nim = nim.fit_spkNL( Robs, Xs, varargin{:} );
+		snim.spkNL = nim.spkNL;
+					
+		snim.fit_props = nim.fit_props;
+		snim.fit_props.fit_type = 'spkNL';
 		snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
 	end
 	
@@ -593,9 +606,15 @@ methods
 			if snim.subunits(nn).rank > 1
 				plot( (0:nLags-1)*dt, snim.subunits(nn).kt(:,2), sprintf('%c--', clr), 'LineWidth',0.8 )
 			end
+			if snim.subunits(nn).weight > 0
+				legend_titles{nn} = sprintf('Exc sub %d', nn  );
+			else
+				legend_titles{nn} = sprintf('Sup sub %d', nn  );
+			end
 		end
 		plot( [0 (nLags-1)*dt],[0 0],'k','LineWidth',0.5)
 		xlim([0 (nLags-1)*dt])
+		legend( legend_titles )
 	end
 				
 	%function nim = init_spkhist(nim,n_bins,varargin)
