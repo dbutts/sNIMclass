@@ -653,8 +653,27 @@ methods
 			LLnulls(nn) = LLdata.nullLL;	
 		end
 	end
+
+	function nrms = subunit_filter_norms( snim, stims )
+	% Usage: nrms = snim.subunit_filter_norms( stims )
+	% Returns array of subunit filter output magnitudes
+	
+		if (nargin < 2) || isempty(stims)
+			Nsubs = length(snim.subunits);
+			nrms = zeros(1,Nsubs);
+			for nn = 1:Nsubs
+				nrms(nn) = std(snim.subunits(nn).ksp);
+			end	
+			return
+		end
+		
+		[nim,Xs] = snim.convert2NIM_time( stims );
+		nrms = nim.subunit_filter_norms( Xs );
+	end
+	
 end
-    
+
+
 %% -------------------------- internal methods --------------------------   
 methods (Hidden)
      
