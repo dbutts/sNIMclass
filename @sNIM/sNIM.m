@@ -225,6 +225,7 @@ methods
 			snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
 		end
 		snim.spkNL = nim.spkNL;
+		snim.spk_hist = nim.spk_hist;
 		
 		% Record fit results
 		snim.fit_props = nim.fit_props;
@@ -248,6 +249,7 @@ methods
 		end
 		
 		snim.spkNL = nim.spkNL;
+		snim.spk_hist = nim.spk_hist;
 		snim.fit_props = nim.fit_props;
 		snim.fit_props.fit_type = 'S-filter';
 		snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
@@ -270,6 +272,7 @@ methods
 		for nn = 1:length(nim.subunits)
 			snim.subunits(nn).ksp = snim.subunits(nn).ksp * abs(nim.subunits(nn).weight);
 		end
+		snim.spk_hist = nim.spk_hist;
 		snim.spkNL = nim.spkNL;
 					
 		snim.fit_props = nim.fit_props;
@@ -282,6 +285,7 @@ methods
 	
 		[nim,Xs] = snim.convert2NIM_time( stims );
 		nim = nim.fit_spkNL( Robs, Xs, varargin{:} );
+		snim.fit_props = nim.fit_props;
 		snim.spkNL = nim.spkNL;
 					
 		snim.fit_props = nim.fit_props;
@@ -764,6 +768,7 @@ methods (Hidden)
 		end
 		
 		nim = snim.convert2NIM( stim_params_list, filt_list, 1:Nmods );
+		nim.spk_hist = snim.spk_hist;
 					
 		% Remove temporal regularization
 		for nn = 1:Nmods
@@ -812,7 +817,8 @@ methods (Hidden)
 		end	
 		
 		nim = snim.convert2NIM( stim_params_list, filt_list, 1:Nmods );
-
+		nim.spk_hist = snim.spk_hist;
+		
 		% Remove spatial regularization
 		for nn = 1:Nmods
 			nim.subunits(nn).reg_lambdas.d2x = 0;
