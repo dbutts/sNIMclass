@@ -579,8 +579,8 @@ methods
 		[LL,pred_rate,mod_internals,LL_data] = nim.eval_model( Robs, Xs, varargin{:} );
 	end
 				
-	function display_Tfilters( snim, clrscheme )
-	%	Usage: snim.display_Tfilters( <clrscheme> )
+	function fig_handle = display_Tfilters( snim, clrscheme )
+	%	Usage: fig_handle = snim.display_Tfilters( <clrscheme> )
 	% For now just display kts of first rank relative to one another
 	% Default is exc = blue, inh = red, clrscheme > 0 means cycle through bcgrmk
 					
@@ -593,7 +593,12 @@ methods
 		clrs = 'bcgrmkbcgrmk';  Eclrs = 'bcgbcg'; Iclrs = 'rmrmrm'; 
 		Nmods = length(snim.subunits);
 		Nexc = 0;	Ninh = 0;
-		figure; hold on
+		if nargout > 0
+			fig_handle = figure;
+		else
+			figure;
+		end
+		hold on
 		for nn = 1:Nmods
 			if clrscheme == 0
 				if snim.subunits(nn).weight > 0
