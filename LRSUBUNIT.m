@@ -143,6 +143,7 @@ methods
 	%	    'color': enter to specify color of non-image-plots (default sequence is 'bcgrm'.
 	%	    'dt': enter if you want time axis scaled by dt
 	%	    'time_rev': plot temporal filter reversed in time (zero lag on right)
+	%     'no_axes_time': remove vertical axes (filter magnitudes) on temporal plot
 
 		assert((nargin > 1) && ~isempty(dims), 'Must enter filter dimensions.' )
 		[~,parsed_options] = NIM.parse_varargin( varargin );
@@ -187,6 +188,9 @@ methods
 		else
 			box off
 		end
+		if isfield(parsed_options,'no_axes_time')
+			set(gca,'YTickLabel',[]);
+		end
 	end			
 
 	function [] = display_spatial_filter( subunit, dims, varargin )
@@ -198,6 +202,7 @@ methods
 	%	  optional arguments (varargin)
 	%	    'color': enter to specify color of non-image-plots (default sequence is 'bcgrm'.
 	%			'colormap': choose colormap for 2-D plots. Default is 'gray'
+	%     'no_axes_space': remove axes tick marks on 2-D spatial filter plots
 
 		k = subunit.ksp;
 		if length(k) == 1
@@ -237,6 +242,9 @@ methods
 				colormap( parsed_options.colormap );
 			else
 				colormap( 'gray' );
+			end
+			if isfield(parsed_options,'no_axes_space')
+				set(gca,'XTickLabel',[],'YTickLabel',[])
 			end
 			if dims(2) == dims(3)
 				axis square
