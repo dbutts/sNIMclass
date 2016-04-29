@@ -579,16 +579,40 @@ methods
 		[LL,pred_rate,mod_internals,LL_data] = nim.eval_model( Robs, Xs, varargin{:} );
 	end
 				
-	function fig_handle = display_Tfilters( snim, clrscheme )
+	function fig_handle = display_Tfilters( snim, varargin )
 	%	Usage: fig_handle = snim.display_Tfilters( <clrscheme> )
 	% For now just display kts of first rank relative to one another
-	% Default is exc = blue, inh = red, clrscheme > 0 means cycle through bcgrmk
-					
-		if nargin < 2
+
+	% Options:
+	%		'clrscheme': 0 or 1. Default (0) is exc = blue, inh = red, clrscheme > 0 means cycle through 'bcgrmk'
+	%	  'dt': enter if you want time axis scaled by dt
+	%	  'time_rev': plot temporal filter reversed in time (zero lag on right)
+	%   'no_axes_time': remove vertical axes (filter magnitudes) on temporal plot
+
+		[~,parsed_options] = NIM.parse_varargin( varargin );
+
+		if isfield(parsed_options,'clrscheme')
+			clrscheme = parsed_options.clrscheme;
+		else
 			clrscheme = 0;
 		end
-		dt = snim.stim_params(1).dt*snim.stim_params(1).tent_spacing; %/snim.stim_params(1).up_fac;
-		nLags = snim.stim_params(1).dims(1);
+
+		NT = snim.stim_params(1).dims(1);
+		if isfield(parsed_options,'dt')
+			dt = parsed_options.dt;
+		else
+			dt = 1;
+		end
+		if isfield(parsed_options,'time_rev')
+			ts = -dt*(0:NT-1);
+		else
+			ts = dt*(1:NT);
+			if isfield(parsed_options,'dt')
+				ts = ts-dt;  % if entering dt into time axis, shift to zero lag
+			end
+		end
+	
+		%dt = snim.stim_params(1).dt*snim.stim_params(1).tent_spacing; %/snim.stim_params(1).up_fac;
 					
 		clrs = 'bcgrmkbcgrmk';  Eclrs = 'bcgbcg'; Iclrs = 'rmrmrm'; 
 		Nmods = length(snim.subunits);
@@ -611,9 +635,9 @@ methods
 			else
 				clr = clrs(nn);
 			end
-			plot( (0:nLags-1)*dt,snim.subunits(nn).kt(:,1), clr, 'LineWidth',0.8 );
+			plot( ts,snim.subunits(nn).kt(:,1), clr, 'LineWidth',0.8 );
 			if snim.subunits(nn).rank > 1
-				plot( (0:nLags-1)*dt, snim.subunits(nn).kt(:,2), sprintf('%c--', clr), 'LineWidth',0.8 )
+				plot( ts, snim.subunits(nn).kt(:,2), sprintf('%c--', clr), 'LineWidth',0.8 )
 			end
 			if snim.subunits(nn).weight > 0
 				legend_titles{nn} = sprintf('Exc sub %d', nn  );
@@ -621,9 +645,19 @@ methods
 				legend_titles{nn} = sprintf('Sup sub %d', nn  );
 			end
 		end
-		plot( [0 (nLags-1)*dt],[0 0],'k','LineWidth',0.5)
-		xlim([0 (nLags-1)*dt])
+		plot( [min(ts) max(ts)],[0 0],'k','LineWidth',0.5)
+		xlim([min(ts) max(ts)])
 		legend( legend_titles )
+		
+		if isfield(parsed_options,'time_rev')
+			box on
+		else
+			box off
+		end
+		if isfield(parsed_options,'no_axes_time')
+			set(gca,'YTickLabel',[]);
+		end
+
 	end
 				
 	%function nim = init_spkhist(nim,n_bins,varargin)
