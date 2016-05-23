@@ -317,6 +317,7 @@ methods
 	%	varargin options: 
 	%	  'fit_subs': subunits to fit
 	%   'fit_offsets': whether to fit offsets on different subunits (default = yes)
+	%   'lambdaID': other regularization applied to temporal kernel, e.g. 'l1' (default is 'd2t')
 	
 		[~,parsed_options] = NIM.parse_varargin( varargin );
 
@@ -326,9 +327,14 @@ methods
 		end
 		varargin{end+1} = 'fit_offsets';
 		varargin{end+1} = fit_offsets;
-		varargin{end+1} = 'lambdaID';
-		varargin{end+1} = 'd2t';
-				
+		if isfield(parsed_options,'lambdaID')
+			regvar = parsed_options.lambdaID;			
+		else
+			regvar = 'd2t';
+			varargin{end+1} = 'lambdaID';
+			varargin{end+1} = 'd2t';
+		end
+		
 		[nim,Xs] = snim.convert2NIM_time( stims );
 		nim = nim.reg_path( Robs, Xs, Uindx, XVindx, varargin{:} );
 					
@@ -339,11 +345,11 @@ methods
 			snim.subunits(nn).kt = reshape( nim.subunits(nn).filtK, nLags/snim.subunits(nn).rank, snim.subunits(nn).rank );
 			snim.subunits(nn) = snim.subunits(nn).normalize_kt();
 			snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
-			snim.subunits(nn).reg_lambdas.d2t = nim.subunits(nn).reg_lambdas.d2t;	
+			snim.subunits(nn).reg_lambdas.(regvar) = nim.subunits(nn).reg_lambdas.(regvar);	
 		end
 					
 		snim.fit_props = nim.fit_props;
-		snim.fit_props.fit_type = 'T-regularization';
+		snim.fit_props.fit_type = sprintf( 'T-regularization (%s)', regvar );
 		snim.fit_history = cat( 1, snim.fit_history, snim.fit_props );
 	end
 
@@ -353,7 +359,8 @@ methods
 	%	varargin options: 
 	%	  'fit_subs': subunits to fit
 	%   'fit_offsets': whether to fit offsets on different subunits (default = yes)
-	
+	%   'lambdaID': other regularization applied to spatial kernel, e.g. 'l1' (default is 'd2x')
+
 		[~,parsed_options] = NIM.parse_varargin( varargin );
 
 		fit_offsets = 1; % default fit with offsets
@@ -362,9 +369,14 @@ methods
 		end
 		varargin{end+1} = 'fit_offsets';
 		varargin{end+1} = fit_offsets;
-		varargin{end+1} = 'lambdaID';
-		varargin{end+1} = 'd2x';
-				
+		if isfield(parsed_options,'lambdaID')
+			regvar = parsed_options.lambdaID;
+		else
+			regvar = 'd2x';
+			varargin{end+1} = 'lambdaID';
+			varargin{end+1} = regvar;
+		end
+		
 		[nim,Xs] = snim.convert2NIM_space( stims );
 		nim = nim.reg_path( Robs, Xs, Uindx, XVindx, varargin{:} );
 					
@@ -374,11 +386,11 @@ methods
 			NSP = prod(nim.stim_params(nim.subunits(nn).Xtarg).dims(2:3));
 			snim.subunits(nn).ksp = reshape( nim.subunits(nn).filtK, NSP/snim.subunits(nn).rank, snim.subunits(nn).rank );
 			snim.subunits(nn).NLoffset = nim.subunits(nn).NLoffset;
-			snim.subunits(nn).reg_lambdas.d2x = nim.subunits(nn).reg_lambdas.d2x;
+			snim.subunits(nn).reg_lambdas.(regvar) = nim.subunits(nn).reg_lambdas.(regvar);
 		end
 					
 		snim.fit_props = nim.fit_props;
-		snim.fit_props.fit_type = 'SP-regularization';
+		snim.fit_props.fit_type = sprintf( 'SP-regularization (%s)', regvar );
 		snim.fit_history = cat( 1, snim.fit_history, nim.fit_props );
 	end
 				
@@ -400,7 +412,6 @@ methods
 			modvarargin{end+1} = 'lambdaID';
 			modvarargin{end+1} = 'l1';
 			snim = snim.reg_pathSP( Robs, stims, Uindx, XVindx, modvarargin{:} );
-			disp('THIS WILL HAVE PROBLEMS. Fix reg_pathSP to handle l1' )
 		else
 			if strcmp(lambdaID,'d2t') || strcmp(lambdaID,'d2xt')
 				disp( 'Temporal regularization' )
