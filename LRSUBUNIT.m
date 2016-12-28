@@ -122,6 +122,20 @@ methods
 		kts = kts(2:end-1,:);  % shift off first latency (one lag in the future)	
 	end
 	
+	
+	function LRsub_out = adjust_nlags( LRsub, new_nlags )
+	% Usage: LRsub_out = LRsub.adjust_nlags( new_nlags )
+			
+		LRsub_out = LRsub;
+		nLags = length(LRsub.kt);
+		if new_nlags <= nLags 
+			LRsub_out.kt = LRsub.kt(1:new_nlags);
+		else
+			LRsub_out.kt(end+1:new_nlags) = 0;
+		end
+		LRsub_out.filtK = LRsub_out.kt * LRsub.ksp';
+	end
+	
 end
 
 %% ------------------ DISPLAY FUNCTIONS ------------------

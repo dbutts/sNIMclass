@@ -38,6 +38,7 @@ methods
 	%nim = fit_spkNL(nim, Robs, Xstims, varargin); %fit parameters of spkNL function
 	%nim = fit_NLparams(nim, Robs, Xstims, varargin); %fit parameters of (parametric) upstream NL functions
   %nim = fit_weights(nim, Robs, Xstims, varargin); %fit linear weights on each subunit
+	%snim = adjust_nlags( new_nlags )
 end
 methods (Static)
 	%Xmat = create_time_embedding(stim,params) %make time-embedded stimulus
@@ -582,6 +583,20 @@ methods
 		Uindx = setdiff((1:NT)',XVindx);
 	end
 				
+	
+	function snim_out = adjust_nlags( snim, new_nlags )
+	% Usage: snim_out = snim.adjust_nlags( new_nlags )
+	% Adjusts number of temporal lags in kt to new value
+		
+		snim_out = snim;		
+		snim_out.stim_params.dims(1) = new_nlags;
+		for nn = 1:length(snim.subunits)
+			snim_out.subunits(nn) = snim.subunits(nn).adjust_nlags( new_nlags );
+		end
+		
+	end
+	
+	
 	function [LL, pred_rate, mod_internals, LL_data] = eval_model( snim, Robs, stims, varargin )
 	%	Usage: [LL, pred_rate, mod_internals, LL_data] = eval_model( snim, Robs, stims, varargin )
 
